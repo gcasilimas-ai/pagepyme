@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}{{ venta.codigo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><p style="margin:0;"><a href="{% url 'comercial:ventas' %}">Ventas</a></p>
+    <h1>{{ venta.codigo }} · <a href="{% url 'maestros:cliente' venta.cliente.pk %}">{{ venta.cliente.nombre }}</a></h1>
+    <p>{{ venta.fecha|date:"j \d\e F \d\e Y"|lower }} · {{ venta.get_forma_pago_display }}{% if venta.fecha_vencimiento %} · vence el {{ venta.fecha_vencimiento|date:"j M Y" }}{% endif %} · registrada por {{ venta.creado_por.username|default:"—" }}{% if venta.cotizacion %} · desde <a href="{% url 'comercial:cotizacion' venta.cotizacion.pk %}">{{ venta.cotizacion.codigo }}</a>{% endif %}</p></div>
+  {% if venta.estado == 'anulada' %}<span class="estado estado-neutro">Anulada</span>{% endif %}
+</div>
+<div class="rejilla rejilla-3">
+  <section class="tarjeta"><div class="cifra-etiqueta">Total</div><div class="cifra">{{ venta.total|cop }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Pagado</div><div class="cifra">{{ venta.pagado|cop }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Saldo</div><div class="cifra">{{ venta.saldo|cop }}</div>{% if venta.saldo > 0 and venta.dias_vencida > 0 %}<span class="estado estado-critico">{{ venta.dias_vencida }} días de mora</span>{% endif %}</section>
+</div>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><h2>Productos</h2></div>
+  <div class="tabla-contenedor"><table class="tabla">
+    <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio</th><th class="num">Subtotal</th><th class="num">Costo unitario</th><th class="num">Margen</th></tr></thead>
+    <tbody>{% for i in items %}<tr><td>{{ i.producto.nombre }}</td><td class="num">{{ i.cantidad|num }}</td><td class="num">{{ i.precio_unitario|cop }}</td><td class="num">{{ i.subtotal|cop }}</td><td class="num">{{ i.costo_unitario|cop }}</td><td class="num">{{ i|margen_item|pct }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="tenue" style="font-size:.82rem; margin-top:8px;">El costo unitario es el costo promedio del producto en el momento de la venta; con él se calcula el margen de contribución.</p>
+</section>
+{% if venta.forma_pago == 'credito' or pagos %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><h2>Pagos y abonos</h2></div>
+  <table class="tabla">
+    <thead><tr><th>Fecha</th><th>Medio</th><th>Referencia</th><th class="num">Valor</th><th>Registrado por</th></tr></thead>
+    <tbody>{% for p in pagos %}<tr><td>{{ p.fecha|date:"j M Y" }}</td><td>{{ p.get_medio_display }}</td><td>{{ p.referencia|default:"—" }}</td><td class="num">{{ p.valor|cop }}</td><td>{{ p.registrado_por.username|default:"—" }}</td></tr>{% empty %}<tr><td colspan="5" class="vacio">Sin abonos todavía.</td></tr>{% endfor %}</tbody>
+  </table>
+  {% if venta.estado == 'emitida' and venta.forma_pago == 'credito' and venta.saldo > 0 %}
+  <form method="post" action="{% url 'comercial:venta_abono' venta.pk %}" class="separado" novalidate>
+    {% csrf_token %}
+    <h3 style="margin-bottom:10px;">Registrar abono</h3>
+    <div class="campos" style="grid-template-columns: repeat(4, minmax(0,1fr));">{% for field in abono_form %}{% include "core/_campo.html" %}{% endfor %}</div>
+    <div class="botonera"><button class="btn btn-primario" type="submit">Registrar abono</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+{% if venta.estado == 'emitida' %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Anular venta</h2><p>Las unidades regresan al inventario y la venta deja de contar en los indicadores. No se puede deshacer.</p></div></div>
+  <form method="post" action="{% url 'comercial:venta_anular' venta.pk %}" class="filtros" data-confirmar="¿Anular {{ venta.codigo }}? Esta acción no se puede deshacer.">
+    {% csrf_token %}
+    <div class="campo campo-ancho"><label for="motivo">Motivo</label><input type="text" id="motivo" name="motivo" required placeholder="Por ejemplo: error en las cantidades"></div>
+    <button class="btn btn-peligro" type="submit">Anular venta</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

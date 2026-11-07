@@ -1,0 +1,30 @@
+# Despliegue en Render (plan gratuito). La base de datos PostgreSQL vive en Neon
+# (plan gratuito, sin vencimiento); su cadena de conexión se pega en DATABASE_URL.
+services:
+  - type: web
+    name: pagepyme
+    runtime: python
+    plan: free
+    region: virginia
+    buildCommand: ./build.sh
+    startCommand: gunicorn pagepyme.wsgi:application --workers 2 --timeout 60 --access-logfile -
+    healthCheckPath: /ingresar/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: MOSTRAR_ACCESO_DEMO
+        value: "True"
+      - key: DEMO_CLAVE
+        value: Demo-PagePyme-2026
+      - key: DJANGO_SUPERUSER_USERNAME
+        sync: false
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: consultor@pagepyme.local

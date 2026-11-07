@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}{{ producto.nombre }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><p style="margin:0;"><a href="{% url 'maestros:productos' %}">Productos</a></p><h1>{{ producto.nombre }}</h1><p>{{ producto.codigo }} · {{ producto.categoria.nombre|default:"Sin categoría" }} · {{ producto.get_unidad_display }}{% if not producto.activo %} · Inactivo{% endif %}</p></div>
+  <div class="acciones">
+    {% if puede_inventario %}<a class="btn" href="{% url 'inventario:movimiento_nuevo' %}?producto={{ producto.pk }}">Registrar entrada o ajuste</a>{% endif %}
+    {% if puede_editar %}<a class="btn btn-primario" href="{% url 'maestros:producto_editar' producto.pk %}">Editar</a>{% endif %}
+  </div>
+</div>
+<div class="rejilla rejilla-4">
+  <section class="tarjeta"><div class="cifra-etiqueta">Existencias</div><div class="cifra">{{ producto.stock_actual|num }}</div><span class="estado estado-{{ producto.estado_stock }}">{% if producto.estado_stock == 'quiebre' %}Agotado{% elif producto.estado_stock == 'bajo' %}En el mínimo o por debajo{% else %}Sobre el mínimo ({{ producto.stock_minimo }}){% endif %}</span></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Costo promedio</div><div class="cifra">{{ producto.costo_unitario|cop }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Precio de venta</div><div class="cifra">{{ producto.precio_venta|cop }}</div><div class="tenue">Margen unitario {{ producto.margen_unitario_pct|pct }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Vendido (histórico)</div><div class="cifra">{{ ventas.unidades|default:0|num }}</div><div class="tenue">en {{ ventas.n|default:0 }} ventas</div></section>
+</div>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Últimos movimientos</h2><p>Cada cambio de existencias queda registrado con su costo y responsable.</p></div></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th class="num">Cantidad</th><th class="num">Costo unitario</th><th>Referencia</th><th>Usuario</th></tr></thead>
+    <tbody>{% for m in movimientos %}<tr><td>{{ m.fecha|date:"j M Y" }}</td><td>{{ m.get_tipo_display }}</td><td class="num">{% if m.signo > 0 %}+{% else %}−{% endif %}{{ m.cantidad|num }}</td><td class="num">{{ m.costo_unitario|cop }}</td><td>{% if m.venta %}<a href="{% url 'comercial:venta' m.venta.pk %}">{{ m.venta.codigo }}</a>{% else %}{{ m.observacion|default:"—" }}{% endif %}</td><td>{{ m.usuario.username|default:"—" }}</td></tr>{% empty %}<tr><td colspan="6" class="vacio">Sin movimientos.</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

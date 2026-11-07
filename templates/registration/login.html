@@ -1,0 +1,42 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ingresar · PAGE-PYME</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="icon" href="{% static 'img/icono.svg' %}" type="image/svg+xml">
+</head>
+<body>
+<div class="ingreso">
+  <section class="ingreso-lado">
+    <div>
+      <div class="marca" style="padding:0;"><span class="marca-sello" aria-hidden="true">PP</span><span class="marca-texto">PAGE-PYME</span></div>
+      <h1>Ventas, inventario y cartera en un solo lugar.</h1>
+      <p>Plataforma de gestión para pymes comercializadoras de elementos de protección personal. Cada venta, compra y abono que se registra alimenta un tablero de control con seis indicadores de negocio.</p>
+    </div>
+    <p class="tenue" style="font-size:.82rem; color:#8d97a6;">Proyecto de grado · Maestría en Analítica de Datos · Universidad Central</p>
+  </section>
+  <section class="ingreso-form">
+    <div class="tarjeta">
+      <h2 style="margin-bottom:14px;">Ingresar</h2>
+      {% if form.errors %}<div class="errores-formulario">Usuario o contraseña incorrectos.</div>{% endif %}
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="campo"><label for="id_username">Usuario</label><input type="text" name="username" id="id_username" autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}"></div>
+        <div class="campo separado"><label for="id_password">Contraseña</label><input type="password" name="password" id="id_password" autocomplete="current-password" required></div>
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="botonera"><button class="btn btn-primario" type="submit" style="width:100%; justify-content:center;">Ingresar</button></div>
+      </form>
+      {% if acceso_demo %}
+      <div class="demo aviso-neutro">
+        <p style="margin-bottom:6px;"><strong>Acceso de demostración</strong> a «{{ acceso_demo.empresa }}». Los datos son ficticios.</p>
+        <p style="margin-bottom:4px;">Usuarios: {% for u, rol in acceso_demo.usuarios %}<code>{{ u }}</code> ({{ rol|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
+        <p style="margin:0;">Contraseña: <code>{{ acceso_demo.clave }}</code></p>
+      </div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+</body>
+</html>

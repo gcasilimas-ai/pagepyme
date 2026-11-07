@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Cotizaciones{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Cotizaciones</h1><p>Propuestas enviadas a clientes. Una cotización aceptada se convierte en venta con un clic.</p></div>
+  <a class="btn btn-primario" href="{% url 'comercial:cotizacion_nueva' %}">Nueva cotización</a>
+</div>
+<form method="get" class="filtros tarjeta" style="padding:14px 16px;">
+  <div class="campo campo-ancho"><label for="q">Cliente</label><input type="search" id="q" name="q" value="{{ q }}"></div>
+  <div class="campo"><label for="estado">Estado</label><select id="estado" name="estado"><option value="">Todos</option>{% for v, n in estados %}<option value="{{ v }}" {% if v == estado %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></div>
+  <button class="btn" type="submit">Filtrar</button>
+</form>
+<div class="tarjeta separado tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Cotización</th><th>Fecha</th><th>Cliente</th><th>Vence</th><th class="num">Total</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for c in pagina %}
+      <tr><td><a href="{% url 'comercial:cotizacion' c.pk %}">{{ c.codigo }}</a></td><td>{{ c.fecha|date:"j M Y" }}</td><td>{{ c.cliente.nombre }}</td><td>{{ c.vence|date:"j M Y" }}</td><td class="num">{{ c.total|cop }}</td>
+        <td><span class="estado {% if c.estado == 'convertida' or c.estado == 'aceptada' %}estado-cumple{% elif c.estado == 'rechazada' %}estado-neutro{% else %}estado-riesgo{% endif %}">{{ c.get_estado_display }}</span></td></tr>
+    {% empty %}<tr><td colspan="6" class="vacio">No hay cotizaciones.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% include "core/_paginacion.html" %}
+</div>
+{% endblock %}

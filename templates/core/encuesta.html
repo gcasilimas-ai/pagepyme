@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Evaluar la plataforma{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>Evaluar la plataforma</h1>
+    <p>Diez afirmaciones del cuestionario de usabilidad SUS. Marca qué tan de acuerdo estás: 1 = totalmente en desacuerdo, 5 = totalmente de acuerdo. Toma unos dos minutos.</p>
+  </div>
+</div>
+{% if previa %}<div class="aviso-neutro" style="margin-bottom:16px;">Ya respondiste el {{ previa.fecha|date:"j \d\e F"|lower }}. Si respondes otra vez, se guarda como una nueva respuesta.</div>{% endif %}
+<form method="post" class="tarjeta formulario" novalidate>
+  {% csrf_token %}
+  {% if form.errors %}<div class="errores-formulario">Responde todas las afirmaciones antes de enviar.</div>{% endif %}
+  {% for field in form %}
+    {% if field.name == "comentario" %}
+      <div class="separado">{% include "core/_campo.html" %}</div>
+    {% else %}
+    <fieldset class="pregunta{% if field.errors %} con-error{% endif %}" style="border:0; margin:0; padding-left:0; padding-right:0;">
+      <legend style="font-weight:500; margin-bottom:8px; padding:0;">{{ field.label }}</legend>
+      <div class="escala">
+        <span class="escala-extremo">En desacuerdo</span>
+        {% for opcion in field %}<label for="{{ opcion.id_for_label }}">{{ opcion.tag }}<span>{{ opcion.choice_label }}</span></label>{% endfor %}
+        <span class="escala-extremo">De acuerdo</span>
+      </div>
+      {% for e in field.errors %}<p class="error-campo">{{ e }}</p>{% endfor %}
+    </fieldset>
+    {% endif %}
+  {% endfor %}
+  <div class="botonera"><button class="btn btn-primario" type="submit">Enviar respuesta</button></div>
+</form>
+{% endblock %}

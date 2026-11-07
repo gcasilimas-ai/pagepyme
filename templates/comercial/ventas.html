@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Ventas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Ventas</h1><p>Documentos de venta emitidos. Las anuladas no cuentan en los indicadores.</p></div>
+  <a class="btn btn-primario" href="{% url 'comercial:venta_nueva' %}">Nueva venta</a>
+</div>
+<form method="get" class="filtros tarjeta" style="padding:14px 16px;">
+  <div class="campo campo-ancho"><label for="q">Buscar</label><input type="search" id="q" name="q" value="{{ q }}" placeholder="Cliente o número (VTA-00012)"></div>
+  <div class="campo"><label for="forma">Forma de pago</label><select id="forma" name="forma"><option value="">Todas</option><option value="contado" {% if forma == 'contado' %}selected{% endif %}>Contado</option><option value="credito" {% if forma == 'credito' %}selected{% endif %}>Crédito</option></select></div>
+  <div class="campo"><label for="desde">Desde</label><input type="date" id="desde" name="desde" value="{{ desde }}"></div>
+  <div class="campo"><label for="hasta">Hasta</label><input type="date" id="hasta" name="hasta" value="{{ hasta }}"></div>
+  <button class="btn" type="submit">Filtrar</button>
+</form>
+<div class="tarjeta separado tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Venta</th><th>Fecha</th><th>Cliente</th><th>Forma de pago</th><th class="num">Total</th><th class="num">Saldo</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for v in pagina %}
+      <tr><td><a href="{% url 'comercial:venta' v.pk %}">{{ v.codigo }}</a></td><td>{{ v.fecha|date:"j M Y" }}</td><td>{{ v.cliente.nombre }}</td><td>{{ v.get_forma_pago_display }}</td><td class="num">{{ v.total|cop }}</td>
+        <td class="num">{% if v.estado == 'emitida' and v.forma_pago == 'credito' %}{{ v.saldo|cop }}{% else %}—{% endif %}</td>
+        <td>{% if v.estado == 'anulada' %}<span class="estado estado-neutro">Anulada</span>{% elif v.forma_pago == 'credito' and v.saldo > 0 %}{% if v.dias_vencida > 0 %}<span class="estado estado-critico">Vencida {{ v.dias_vencida }} d</span>{% else %}<span class="estado estado-riesgo">Por cobrar</span>{% endif %}{% else %}<span class="estado estado-cumple">Pagada</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="7" class="vacio">No hay ventas con esos filtros.</td></tr>{% endfor %}
+    </tbody>
+    {% if pagina %}<tfoot><tr><td colspan="4">Total emitido con estos filtros</td><td class="num">{{ total|cop }}</td><td colspan="2"></td></tr></tfoot>{% endif %}
+  </table>
+  {% include "core/_paginacion.html" %}
+</div>
+{% endblock %}

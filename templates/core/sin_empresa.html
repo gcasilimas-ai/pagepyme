@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Sin empresa asignada{% endblock %}
+{% block contenido %}
+<div class="tarjeta formulario">
+  <h1>Tu usuario no tiene una empresa asignada</h1>
+  <p class="separado">Pide al gerente de tu empresa o al equipo consultor que te asocien a una empresa del piloto. Mientras tanto no hay datos para mostrar.</p>
+  <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn" type="submit">Cerrar sesión</button></form>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block titulo %}Revisión de carga{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><p style="margin:0;"><a href="{% url 'maestros:importar' %}">Importar desde Excel</a></p><h1>{{ lote.get_tipo_display }} · {{ lote.archivo_nombre }}</h1><p>Analizado el {{ lote.fecha|date:"j \d\e F \d\e Y, H:i"|lower }} por {{ lote.usuario.username|default:"—" }}.</p></div>
+  <span class="estado {% if lote.estado == 'aplicado' %}estado-cumple{% elif lote.estado == 'descartado' %}estado-neutro{% else %}estado-riesgo{% endif %}">{{ lote.get_estado_display }}</span>
+</div>
+<div class="rejilla rejilla-4">
+  <section class="tarjeta"><div class="cifra-etiqueta">Filas leídas</div><div class="cifra">{{ lote.total_filas }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Filas válidas</div><div class="cifra">{{ lote.filas_validas }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Filas con error (no se cargan)</div><div class="cifra">{{ lote.filas_con_error }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Advertencias</div><div class="cifra">{{ advertencias }}</div><div class="tenue">se cargan, pero conviene revisarlas</div></section>
+</div>
+{% if lote.estado == 'pendiente' %}
+<form method="post" class="tarjeta separado" style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; justify-content:space-between;">
+  {% csrf_token %}
+  <p style="margin:0;">Si confirmas, se cargarán <strong>{{ lote.filas_validas }}</strong> filas válidas en una sola operación. Las filas con error se omiten.</p>
+  <div class="acciones"><button class="btn" name="accion" value="descartar" type="submit">Descartar</button><button class="btn btn-primario" name="accion" value="aplicar" type="submit" {% if not lote.filas_validas %}disabled{% endif %}>Confirmar carga</button></div>
+</form>
+{% elif lote.estado == 'aplicado' %}
+<div class="aviso-neutro separado">Carga aplicada: {{ lote.creados }} registro{{ lote.creados|pluralize }} creado{{ lote.creados|pluralize }} y {{ lote.actualizados }} actualizado{{ lote.actualizados|pluralize }}.</div>
+{% endif %}
+{% if lote.errores %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Filas con error</h2><p>Corrige estas filas en el archivo original y vuelve a cargarlo.</p></div></div>
+  <div class="tabla-contenedor"><table class="tabla">
+    <thead><tr><th class="num">Fila</th><th>Problemas</th><th>Valores leídos</th></tr></thead>
+    <tbody>{% for e in lote.errores %}<tr><td class="num">{{ e.fila }}</td><td>{% for m in e.mensajes %}<div style="color:var(--bad);">{{ m }}</div>{% endfor %}</td><td style="font-size:.84rem;">{% for k, v in e.valores.items %}{{ k }}: <strong>{{ v|default:"(vacío)" }}</strong>{% if not forloop.last %} · {% endif %}{% endfor %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endif %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Filas válidas</h2><p>Así quedarían los datos después de limpiarlos (mayúsculas, espacios y formatos numéricos).</p></div></div>
+  <div class="tabla-contenedor"><table class="tabla">
+    <thead><tr><th class="num">Fila</th><th>Acción</th><th>Datos</th><th>Advertencias</th></tr></thead>
+    <tbody>{% for f in lote.datos %}<tr><td class="num">{{ f.fila }}</td><td>{{ f.datos.accion|capfirst }}</td><td style="font-size:.84rem;">{% for k, v in f.datos.items %}{% if k != 'accion' %}{{ k }}: <strong>{{ v|default:"—" }}</strong>{% if not forloop.last %} · {% endif %}{% endif %}{% endfor %}</td><td style="font-size:.84rem; color:var(--warn);">{{ f.advertencias|join:"; " }}</td></tr>{% empty %}<tr><td colspan="4" class="vacio">No hay filas válidas.</td></tr>{% endfor %}</tbody>
+  </table></div>
+</section>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Categorías{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Categorías</h1><p>Líneas de producto. Cada una puede tener su propia meta de margen.</p></div>
+  {% if puede_editar %}<a class="btn btn-primario" href="{% url 'maestros:categoria_nueva' %}">Nueva categoría</a>{% endif %}
+</div>
+<div class="tarjeta tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Categoría</th><th class="num">Productos</th><th class="num">Meta de margen</th>{% if puede_editar %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for c in categorias %}
+      <tr><td><a href="{% url 'maestros:productos' %}?categoria={{ c.pk }}">{{ c.nombre }}</a></td><td class="num">{{ c.n_productos }}</td>
+        <td class="num">{% if c.meta_margen is not None %}{{ c.meta_margen|pct:0 }}{% else %}<span class="tenue">General ({{ empresa_actual.meta_margen|pct:0 }})</span>{% endif %}</td>
+        {% if puede_editar %}<td class="num"><a href="{% url 'maestros:categoria_editar' c.pk %}">Editar</a></td>{% endif %}</tr>
+    {% empty %}<tr><td colspan="4" class="vacio">Aún no hay categorías. Se crean solas al importar productos con la columna «categoria».</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

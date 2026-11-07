@@ -1,0 +1,25 @@
+{% load static formato %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ cotizacion.codigo }} · {{ cotizacion.empresa.nombre }}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body style="background:#fff;">
+<div class="documento-impreso">
+  <div style="display:flex; justify-content:space-between; gap:20px; align-items:flex-start;">
+    <div><h1>{{ cotizacion.empresa.nombre }}</h1><p class="tenue">{% if cotizacion.empresa.nit %}NIT {{ cotizacion.empresa.nit }} · {% endif %}{{ cotizacion.empresa.ciudad }}, {{ cotizacion.empresa.departamento }}</p></div>
+    <div style="text-align:right;"><h2>Cotización {{ cotizacion.codigo }}</h2><p class="tenue">Fecha: {{ cotizacion.fecha|date:"j \d\e F \d\e Y"|lower }}<br>Válida hasta: {{ cotizacion.vence|date:"j \d\e F \d\e Y"|lower }}</p></div>
+  </div>
+  <p class="separado"><strong>Cliente:</strong> {{ cotizacion.cliente.nombre }} · {{ cotizacion.cliente.tipo_documento }} {{ cotizacion.cliente.documento }}</p>
+  <table class="tabla separado">
+    <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Precio unitario</th><th class="num">Subtotal</th></tr></thead>
+    <tbody>{% for i in items %}<tr><td>{{ i.producto.nombre }}</td><td class="num">{{ i.cantidad|num }}</td><td class="num">{{ i.precio_unitario|cop }}</td><td class="num">{{ i.subtotal|cop }}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><td colspan="3" class="num">Total</td><td class="num">{{ cotizacion.total|cop }}</td></tr></tfoot>
+  </table>
+  {% if cotizacion.observaciones %}<p class="separado">{{ cotizacion.observaciones }}</p>{% endif %}
+  <p class="tenue separado" style="font-size:.82rem;">Precios en pesos colombianos. Sujeto a disponibilidad de inventario al momento de la orden.</p>
+  <div class="no-imprimir separado"><button class="btn btn-primario" onclick="window.print()">Imprimir o guardar en PDF</button></div>
+</div>
+</body>
+</html>

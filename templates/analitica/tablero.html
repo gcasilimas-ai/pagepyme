@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Tablero de control{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>Tablero de control</h1>
+    <p>Del {{ inicio|date:"j \d\e F"|lower }} al {{ fin|date:"j \d\e F \d\e Y"|lower }} ({{ dias }} días). Se compara con los {{ dias }} días anteriores.</p>
+  </div>
+  <form method="get" class="periodo" aria-label="Periodo de análisis">
+    <label class="tenue" for="periodo" style="font-size:.85rem;">Periodo</label>
+    <select id="periodo" name="periodo" data-periodo>
+      {% for clave, nombre in periodos %}<option value="{{ clave }}" {% if clave == periodo %}selected{% endif %}>{{ nombre }}</option>{% endfor %}
+    </select>
+    <span data-personalizado class="periodo" {% if periodo != 'personalizado' %}hidden{% endif %}>
+      <input type="date" name="desde" value="{{ inicio|date:'Y-m-d' }}" aria-label="Desde">
+      <input type="date" name="hasta" value="{{ fin|date:'Y-m-d' }}" aria-label="Hasta">
+      <button class="btn btn-pequeno" type="submit">Aplicar</button>
+    </span>
+    {% if permisos.configuracion %}<a class="btn btn-pequeno" href="{% url 'metas' %}">Ajustar metas</a>{% endif %}
+  </form>
+</div>
+
+{% if pasos_pendientes %}
+<section class="tarjeta" style="margin-bottom:16px;">
+  <div class="tarjeta-titulo"><div><h2>Primeros pasos</h2><p>El tablero se alimenta de lo que registras. Completa estos pasos para ver los indicadores.</p></div></div>
+  <ol class="pasos">
+    {% for p in primeros_pasos %}
+    <li class="{% if p.hecho %}paso-hecho{% endif %}">
+      <span class="paso-marca" aria-hidden="true">{% if p.hecho %}✓{% else %}{{ forloop.counter }}{% endif %}</span>
+      {% if p.hecho %}<span>{{ p.texto }}</span>{% else %}<a href="{% url p.enlace %}">{{ p.texto }}</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% elif sin_ventas_periodo and ultima_venta %}
+<div class="aviso" style="margin-bottom:16px;">No hay ventas registradas en este periodo. La última venta es del {{ ultima_venta|date:"j \d\e F \d\e Y"|lower }}.</div>
+{% endif %}
+
+<section aria-label="Indicadores de negocio" class="indicadores">
+  {% for i in indicadores %}
+  <article class="tarjeta indicador">
+    <div class="indicador-cabeza">
+      <span class="indicador-nombre">{{ i.nombre }}</span>
+      <span class="estado estado-{{ i.estado }}">{{ i.estado_texto }}</span>
+    </div>
+    <div class="indicador-valor">{{ i.valor|valor_ind:i.unidad }}{% if i.unidad == 'veces/año' and i.valor is not None %} <small>veces al año</small>{% endif %}</div>
+    {% with b=i.bala %}{% if b %}
+    <div class="bala" role="img" aria-label="Valor {{ i.valor|valor_ind:i.unidad }} frente a meta {{ i.meta|valor_ind:i.unidad }}">
+      {% for banda in b.bandas %}<span class="bala-banda {{ banda.tipo }}" style="left:{{ banda.desde|stringformat:'.2f' }}%;width:{{ banda.ancho|stringformat:'.2f' }}%"></span>{% endfor %}
+      <span class="bala-valor" style="width:{{ b.valor|stringformat:'.2f' }}%"></span>
+      <span class="bala-meta" style="left:{{ b.meta|stringformat:'.2f' }}%"></span>
+    </div>
+    {% endif %}{% endwith %}
+    <div class="indicador-meta">
+      <span>Meta: {% if i.meta is not None %}{% if i.direccion == 'menor' %}≤ {% else %}≥ {% endif %}{{ i.meta|valor_ind:i.unidad }}{% else %}sin definir{% endif %}{% if i.cumplimiento is not None %} · cumplimiento {{ i.cumplimiento|num }} %{% endif %}</span>
+      {% if i.variacion is not None %}
+      <span class="{% if i.variacion_favorable %}variacion-favorable{% elif i.variacion_favorable is False %}variacion-desfavorable{% endif %}" title="Cambio frente al periodo anterior">{{ i.variacion|variacion_ind:i.unidad }} vs. anterior</span>
+      {% endif %}
+    </div>
+    <details>
+      <summary>Cómo se calcula y para qué sirve</summary>
+      <p><strong>Fórmula:</strong> {{ i.formula }}</p>
+      {% if i.valor is not None %}<p><strong>Cálculo:</strong> {{ i.calculo }}</p>{% endif %}
+      <p><strong>Decisión que apoya:</strong> {{ i.decision }}</p>
+    </details>
+  </article>
+  {% endfor %}
+</section>
+<p class="bala-leyenda separado" aria-hidden="true">
+  <span class="ley-valor">Valor del periodo</span><span class="ley-meta">Meta</span><span class="ley-bandas">Zonas: crítico · en riesgo · cumple</span>
+</p>
+
+{% if acciones %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Qué hacer ahora</h2><p>Acciones sugeridas a partir de los indicadores que no alcanzan su meta.</p></div></div>
+  <div class="lista-acciones rejilla rejilla-2">
+    {% for a in acciones %}
+    <div class="accion">
+      <h3>{{ a.titulo }} <span class="estado estado-{{ a.indicador.estado }}">{{ a.indicador.nombre }}</span></h3>
+      <p>{{ a.texto }}</p>
+      {% if a.items %}<ul>{% for it in a.items %}<li>{{ it }}</li>{% endfor %}</ul>{% endif %}
+      <a href="{% url a.enlace %}">Ir a la sección</a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="rejilla rejilla-2 separado">
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Ventas por semana</h2><p>Ingresos facturados en el periodo, agrupados por semana.</p></div></div>
+    <div class="grafica"><canvas id="g-ventas" role="img" aria-label="Gráfica de columnas de ventas semanales"></canvas></div>
+  </div>
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Margen de contribución por semana</h2><p>La línea punteada es la meta ({{ meta_margen|num:1 }} %).</p></div></div>
+    <div class="grafica"><canvas id="g-margen" data-meta="{{ meta_margen|stringformat:'.2f' }}" role="img" aria-label="Gráfica de línea del margen semanal frente a la meta"></canvas></div>
+  </div>
+</section>
+
+<section class="rejilla rejilla-2 separado">
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Cartera por antigüedad</h2><p>Saldo pendiente al {{ fin|date:"j \d\e F"|lower }} según los días de mora.</p></div><a href="{% url 'comercial:cartera' %}">Ver cartera</a></div>
+    <div class="grafica grafica-baja"><canvas id="g-cartera" role="img" aria-label="Gráfica de barras horizontales de la cartera por antigüedad"></canvas></div>
+  </div>
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Productos que más aportan al margen</h2><p>Contribución = ventas − costo de lo vendido en el periodo.</p></div></div>
+    {% if top_productos %}
+    <div class="grafica grafica-baja"><canvas id="g-top" role="img" aria-label="Gráfica de barras horizontales de contribución por producto"></canvas></div>
+    {% else %}<p class="vacio">Sin ventas en el periodo.</p>{% endif %}
+  </div>
+</section>
+
+<section class="rejilla rejilla-3 separado">
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Margen por línea</h2><p>Cada línea frente a su meta.</p></div></div>
+    {% if margen_categorias %}
+    <table class="tabla">
+      <thead><tr><th>Línea</th><th class="num">Margen</th><th class="num">Meta</th><th></th></tr></thead>
+      <tbody>
+        {% for c in margen_categorias %}
+        <tr><td>{{ c.categoria }}</td><td class="num">{{ c.margen|pct }}</td>
+          <td class="num" title="{% if c.meta_propia %}Meta propia de la línea{% else %}Meta general de la empresa{% endif %}">{{ c.meta|pct:0 }}{% if c.meta_propia %}*{% endif %}</td>
+          <td class="num"><span class="estado {% if c.cumple %}estado-cumple{% else %}estado-critico{% endif %}">{% if c.cumple %}Cumple{% else %}Bajo{% endif %}</span></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="tenue" style="font-size:.78rem; margin:8px 0 0;">* Meta propia de la línea; las demás usan la meta general.</p>
+    {% else %}<p class="vacio">Sin ventas en el periodo.</p>{% endif %}
+  </div>
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Stock bajo o agotado</h2><p>Existencias actuales en el mínimo o por debajo.</p></div>{% if permisos.inventario %}<a href="{% url 'inventario:alertas' %}">Ver todo</a>{% endif %}</div>
+    {% if alertas %}
+    <table class="tabla">
+      <thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Mín.</th></tr></thead>
+      <tbody>{% for p in alertas %}<tr><td>{{ p.nombre }}</td><td class="num"><span class="estado estado-{{ p.estado_stock }}">{{ p.stock_actual|num }}</span></td><td class="num">{{ p.stock_minimo|num }}</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="vacio">Todos los productos están por encima del mínimo.</p>{% endif %}
+  </div>
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Cartera vencida por cliente</h2><p>Saldos en mora al cierre del periodo.</p></div></div>
+    {% if morosos %}
+    <table class="tabla">
+      <thead><tr><th>Cliente</th><th class="num">Saldo</th><th class="num">Mora</th></tr></thead>
+      <tbody>{% for m in morosos %}<tr><td><a href="{% url 'maestros:cliente' m.cliente.pk %}">{{ m.cliente.nombre }}</a></td><td class="num">{{ m.saldo|cop }}</td><td class="num">{{ m.dias }} d</td></tr>{% endfor %}</tbody>
+    </table>
+    {% else %}<p class="vacio">No hay cartera vencida.</p>{% endif %}
+  </div>
+</section>
+
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Cifras base del periodo</h2><p>Valores con los que se calculan los indicadores. Se pueden descargar en Excel desde «Exportar».</p></div></div>
+  <div class="rejilla rejilla-4">
+    <div><div class="cifra">{{ base.ingresos|cop }}</div><div class="cifra-etiqueta">Ventas ({{ base.n_ventas }} documentos)</div></div>
+    <div><div class="cifra">{{ base.costo|cop }}</div><div class="cifra-etiqueta">Costo de la mercancía vendida</div></div>
+    <div><div class="cifra">{{ base.inv_final|cop }}</div><div class="cifra-etiqueta">Inventario a costo al cierre</div></div>
+    <div><div class="cifra">{{ base.saldo_cartera|cop }}</div><div class="cifra-etiqueta">Saldo de cartera al cierre</div></div>
+  </div>
+</section>
+
+{{ serie_semanal|json_script:"datos-semanal" }}
+{{ cartera|json_script:"datos-cartera" }}
+{{ top_productos|json_script:"datos-top" }}
+{% endblock %}

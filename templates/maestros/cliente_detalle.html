@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}{{ cliente.nombre }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><p style="margin:0;"><a href="{% url 'maestros:clientes' %}">Clientes</a></p><h1>{{ cliente.nombre }}</h1>
+    <p>{{ cliente.get_tipo_documento_display }} {{ cliente.documento }} · {{ cliente.ciudad|default:"Sin ciudad" }} · {% if cliente.plazo_credito_dias %}Crédito a {{ cliente.plazo_credito_dias }} días{% else %}Solo contado{% endif %}</p></div>
+  <div class="acciones"><a class="btn" href="{% url 'comercial:cotizacion_nueva' %}">Nueva cotización</a><a class="btn btn-primario" href="{% url 'maestros:cliente_editar' cliente.pk %}">Editar</a></div>
+</div>
+<div class="rejilla rejilla-3">
+  <section class="tarjeta"><div class="cifra-etiqueta">Saldo pendiente</div><div class="cifra">{{ saldo_total|cop }}</div><div class="tenue">{{ ventas_con_saldo|length }} venta{{ ventas_con_saldo|length|pluralize }} con saldo</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Teléfono</div><div class="cifra" style="font-size:1.2rem;">{{ cliente.telefono|default:"—" }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Correo</div><div class="cifra" style="font-size:1.05rem;">{{ cliente.email|default:"—" }}</div></section>
+</div>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><h2>Últimas ventas</h2></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Venta</th><th>Fecha</th><th>Forma de pago</th><th class="num">Total</th><th class="num">Saldo</th><th>Estado</th></tr></thead>
+    <tbody>{% for v in ventas %}<tr><td><a href="{% url 'comercial:venta' v.pk %}">{{ v.codigo }}</a></td><td>{{ v.fecha|date:"j M Y" }}</td><td>{{ v.get_forma_pago_display }}</td><td class="num">{{ v.total|cop }}</td><td class="num">{{ v.saldo|cop }}</td><td>{{ v.get_estado_display }}</td></tr>{% empty %}<tr><td colspan="6" class="vacio">Este cliente aún no tiene ventas.</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

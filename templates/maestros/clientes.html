@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Clientes{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Clientes</h1><p>Datos de contacto, condiciones de crédito e historial de compras.</p></div>
+  <div class="acciones">{% if permisos.importar %}<a class="btn" href="{% url 'maestros:importar' %}">Importar desde Excel</a>{% endif %}<a class="btn btn-primario" href="{% url 'maestros:cliente_nuevo' %}">Nuevo cliente</a></div>
+</div>
+<form method="get" class="filtros tarjeta" style="padding:14px 16px;">
+  <div class="campo campo-ancho"><label for="q">Buscar</label><input type="search" id="q" name="q" value="{{ q }}" placeholder="Nombre, documento o ciudad"></div>
+  <button class="btn" type="submit">Buscar</button>
+</form>
+<div class="tarjeta separado tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Cliente</th><th>Documento</th><th>Ciudad</th><th>Teléfono</th><th class="num">Crédito</th><th class="num">Compras</th><th class="num">Total comprado</th></tr></thead>
+    <tbody>
+    {% for c in pagina %}
+      <tr><td><a href="{% url 'maestros:cliente' c.pk %}">{{ c.nombre }}</a></td><td>{{ c.tipo_documento }} {{ c.documento }}</td><td>{{ c.ciudad|default:"—" }}</td><td>{{ c.telefono|default:"—" }}</td>
+        <td class="num">{% if c.plazo_credito_dias %}{{ c.plazo_credito_dias }} días{% else %}Contado{% endif %}</td><td class="num">{{ c.n_ventas }}</td><td class="num">{{ c.total_comprado|default:0|cop }}</td></tr>
+    {% empty %}<tr><td colspan="7" class="vacio">No hay clientes{% if q %} con esa búsqueda{% endif %}.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  {% include "core/_paginacion.html" %}
+</div>
+{% endblock %}

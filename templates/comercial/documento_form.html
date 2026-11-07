@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>{{ titulo }}</h1>
+    <p>{% if es_venta %}Al registrarla se descuentan las existencias y, si es de contado, se registra el pago. Si es a crédito, queda en cartera.{% else %}La cotización no mueve inventario. Después podrás convertirla en venta.{% endif %}</p></div>
+</div>
+<form method="post" class="tarjeta" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="errores-formulario">{% for e in form.non_field_errors %}<p style="margin:0;">{{ e }}</p>{% endfor %}</div>{% endif %}
+  {% if formset.non_form_errors %}<div class="errores-formulario">{% for e in formset.non_form_errors %}<p style="margin:0;">{{ e }}</p>{% endfor %}</div>{% endif %}
+  <div class="campos" style="grid-template-columns: repeat(4, minmax(0,1fr));">
+    {% for field in form %}{% include "core/_campo.html" %}{% endfor %}
+  </div>
+
+  <h2 class="separado" style="margin-bottom:8px;">Productos</h2>
+  {{ formset.management_form }}
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th style="width:44%">Producto</th><th class="num" style="width:12%">Cantidad</th><th class="num" style="width:18%">Precio unitario</th><th class="num">Subtotal</th><th></th></tr></thead>
+    <tbody data-items data-venta="{% if es_venta %}1{% else %}0{% endif %}">
+      {% for f in formset %}
+      <tr data-fila>
+        <td>{{ f.producto }}<div class="ayuda-campo" data-stock></div>{% for e in f.producto.errors %}<p class="error-campo">{{ e }}</p>{% endfor %}</td>
+        <td class="num">{{ f.cantidad }}{% for e in f.cantidad.errors %}<p class="error-campo">{{ e }}</p>{% endfor %}</td>
+        <td class="num">{{ f.precio_unitario }}{% for e in f.precio_unitario.errors %}<p class="error-campo">{{ e }}</p>{% endfor %}</td>
+        <td class="num" data-subtotal>—</td>
+        <td class="num"><span hidden>{{ f.DELETE }}</span><button class="btn btn-pequeno" type="button" data-quitar aria-label="Quitar línea">Quitar</button></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="3" class="num">Total</td><td class="num" id="total-items">$ 0</td><td></td></tr></tfoot>
+  </table>
+  </div>
+  <button class="btn separado" type="button" data-agregar>Agregar producto</button>
+
+  <div class="botonera">
+    <button class="btn btn-primario" type="submit">{{ boton }}</button>
+    <a class="btn" href="{% url volver %}">Cancelar</a>
+  </div>
+</form>
+<template id="plantilla-item">
+  <tr data-fila>
+    <td>{{ formset.empty_form.producto }}<div class="ayuda-campo" data-stock></div></td>
+    <td class="num">{{ formset.empty_form.cantidad }}</td>
+    <td class="num">{{ formset.empty_form.precio_unitario }}</td>
+    <td class="num" data-subtotal>—</td>
+    <td class="num"><span hidden>{{ formset.empty_form.DELETE }}</span><button class="btn btn-pequeno" type="button" data-quitar aria-label="Quitar línea">Quitar</button></td>
+  </tr>
+</template>
+{{ catalogo|json_script:"catalogo" }}
+{% endblock %}

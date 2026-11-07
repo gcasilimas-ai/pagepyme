@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block titulo %}Importar desde Excel{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Importar desde Excel</h1><p>Carga productos, clientes o el inventario inicial desde las hojas de cálculo que ya usa la empresa.</p></div></div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>1. Sube el archivo</h2></div>
+    <form method="post" enctype="multipart/form-data" novalidate>
+      {% csrf_token %}
+      <div class="campos">{% for field in form %}{% include "core/_campo.html" with ancho=True %}{% endfor %}</div>
+      <div class="botonera"><button class="btn btn-primario" type="submit">Revisar archivo</button></div>
+    </form>
+    <p class="tenue separado" style="font-size:.86rem;">Nada se guarda en este paso. Primero verás qué filas son válidas, cuáles tienen errores y qué registros se crearían o actualizarían.</p>
+  </section>
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Formato esperado</h2></div>
+    <p style="font-size:.9rem;">La primera fila debe tener los nombres de las columnas. Se aceptan variaciones comunes («Código», «Precio», «NIT», «Correo»…). Los números pueden venir como 12.000 o 12000.</p>
+    <table class="tabla">
+      <thead><tr><th>Tipo</th><th>Obligatorias</th><th>Opcionales</th><th></th></tr></thead>
+      <tbody>
+      {% for tipo, c in columnas.items %}
+        <tr><td>{% if tipo == 'inventario' %}Inventario inicial{% else %}{{ tipo|capfirst }}{% endif %}</td><td>{{ c.requeridas|join:", " }}</td><td>{{ c.opcionales|join:", " }}</td><td class="num"><a href="{% url 'maestros:plantilla' tipo %}">Plantilla</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <h3 class="separado">Qué valida la plataforma</h3>
+    <ul style="font-size:.88rem; padding-left:18px; margin:6px 0 0;">
+      <li>Columnas obligatorias presentes y valores no vacíos.</li>
+      <li>Números válidos y no negativos; cantidades enteras.</li>
+      <li>Códigos o documentos repetidos dentro del mismo archivo.</li>
+      <li>Registros que ya existen (se actualizan en lugar de duplicarse).</li>
+      <li>Clientes con nombre parecido a uno existente (posible duplicado).</li>
+      <li>Precios menores que el costo y productos sin costo.</li>
+    </ul>
+  </section>
+</div>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Historial de cargas</h2><p>Cada carga queda registrada con su resultado.</p></div></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Fecha</th><th>Tipo</th><th>Archivo</th><th>Usuario</th><th class="num">Filas</th><th class="num">Válidas</th><th class="num">Con error</th><th>Estado</th></tr></thead>
+    <tbody>{% for l in lotes %}<tr><td>{{ l.fecha|date:"j M Y, H:i" }}</td><td>{{ l.get_tipo_display }}</td><td><a href="{% url 'maestros:lote' l.pk %}">{{ l.archivo_nombre }}</a></td><td>{{ l.usuario.username|default:"—" }}</td><td class="num">{{ l.total_filas }}</td><td class="num">{{ l.filas_validas }}</td><td class="num">{{ l.filas_con_error }}</td><td>{{ l.get_estado_display }}</td></tr>{% empty %}<tr><td colspan="8" class="vacio">Aún no se ha cargado ningún archivo.</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

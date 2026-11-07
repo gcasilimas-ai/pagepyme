@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}{{ cotizacion.codigo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><p style="margin:0;"><a href="{% url 'comercial:cotizaciones' %}">Cotizaciones</a></p>
+    <h1>{{ cotizacion.codigo }} · {{ cotizacion.cliente.nombre }}</h1>
+    <p>{{ cotizacion.fecha|date:"j \d\e F \d\e Y"|lower }} · vigente hasta el {{ cotizacion.vence|date:"j M Y" }} · {{ cotizacion.get_estado_display }}</p></div>
+  <a class="btn" href="{% url 'comercial:cotizacion_imprimir' cotizacion.pk %}" target="_blank" rel="noopener">Versión para imprimir</a>
+</div>
+<section class="tarjeta">
+  <div class="tabla-contenedor"><table class="tabla">
+    <thead><tr><th>Producto</th><th class="num">Cantidad</th><th class="num">Disponibles hoy</th><th class="num">Precio</th><th class="num">Subtotal</th></tr></thead>
+    <tbody>{% for i in items %}<tr><td>{{ i.producto.nombre }}</td><td class="num">{{ i.cantidad|num }}</td><td class="num">{% if i.producto.stock_actual < i.cantidad %}<span class="estado estado-critico">{{ i.producto.stock_actual|num }}</span>{% else %}{{ i.producto.stock_actual|num }}{% endif %}</td><td class="num">{{ i.precio_unitario|cop }}</td><td class="num">{{ i.subtotal|cop }}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr><td colspan="4" class="num">Total</td><td class="num">{{ cotizacion.total|cop }}</td></tr></tfoot>
+  </table></div>
+  {% if cotizacion.observaciones %}<p class="separado">{{ cotizacion.observaciones }}</p>{% endif %}
+</section>
+{% if venta %}
+<div class="aviso-neutro separado">Esta cotización se convirtió en la venta <a href="{% url 'comercial:venta' venta.pk %}">{{ venta.codigo }}</a>.</div>
+{% elif cotizacion.estado != 'rechazada' %}
+<div class="rejilla rejilla-2 separado">
+  <section class="tarjeta">
+    <h2>Actualizar estado</h2>
+    <form method="post" action="{% url 'comercial:cotizacion_estado' cotizacion.pk %}" class="filtros separado">{% csrf_token %}
+      <div class="campo campo-ancho">{{ estado_form.estado }}</div><button class="btn" type="submit">Guardar</button></form>
+  </section>
+  <section class="tarjeta">
+    <h2>Convertir en venta</h2>
+    {% if faltantes %}<p class="separado" style="color:var(--bad);">No hay existencias suficientes de: {% for i in faltantes %}{{ i.producto.nombre }}{% if not forloop.last %}, {% endif %}{% endfor %}. Registra la entrada antes de convertirla.</p>
+    {% else %}
+    <form method="post" action="{% url 'comercial:cotizacion_convertir' cotizacion.pk %}" class="filtros separado" data-confirmar="Se emitirá una venta y se descontará el inventario. ¿Continuar?">{% csrf_token %}
+      <div class="campo campo-ancho">{{ convertir_form.forma_pago }}</div><button class="btn btn-primario" type="submit">Emitir venta</button></form>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titulo %}{{ titulo }}{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>{{ titulo }}</h1>
+    {% if ayuda %}<p>{{ ayuda }}</p>{% endif %}
+  </div>
+  {% if enlace_extra %}<a class="btn" href="{% url enlace_extra.0 %}">{{ enlace_extra.1 }}</a>{% endif %}
+</div>
+<form method="post" class="tarjeta formulario" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="errores-formulario">{% for e in form.non_field_errors %}<p>{{ e }}</p>{% endfor %}</div>{% endif %}
+  <div class="campos">
+    {% for field in form %}{% include "core/_campo.html" %}{% endfor %}
+  </div>
+  <div class="botonera">
+    <button class="btn btn-primario" type="submit">Guardar</button>
+    {% if volver %}<a class="btn" href="{% url volver %}">Cancelar</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

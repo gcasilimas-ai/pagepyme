@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Calidad de datos{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Calidad de datos</h1><p>Un indicador es tan confiable como los datos que lo alimentan. Estas revisiones se ejecutan sobre la información registrada hasta hoy.</p></div></div>
+<div class="rejilla rejilla-3">
+  <section class="tarjeta"><div class="cifra-etiqueta">Revisiones aprobadas</div><div class="indice">{{ aprobadas }} / {{ total }}</div><div class="tenue">Índice de calidad: {{ indice }} %</div></section>
+  <section class="tarjeta" style="grid-column: span 2;">
+    <h2>Cómo leer esta página</h2>
+    <p class="separado" style="font-size:.9rem;">Las revisiones de <strong>integridad</strong> comprueban que los datos derivados coincidan con su origen (stock frente a movimientos, total de la venta frente a sus líneas). Las de <strong>completitud</strong> buscan campos que, vacíos, distorsionan un indicador. Las de <strong>oportunidad</strong> miden cuánto tiempo lleva la empresa sin registrar.</p>
+  </section>
+</div>
+<section class="tarjeta separado tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Revisión</th><th class="num">Hallazgos</th><th>Resultado</th><th>Por qué importa</th><th></th></tr></thead>
+    <tbody>
+    {% for r in revisiones %}
+      <tr>
+        <td>{{ r.nombre }}</td>
+        <td class="num">{{ r.problemas|num }}{% if r.total is not None %} <span class="tenue">de {{ r.total|num }}</span>{% endif %}</td>
+        <td><span class="estado {% if r.ok %}estado-cumple{% elif r.informativa %}estado-riesgo{% else %}estado-critico{% endif %}">{% if r.ok %}Bien{% elif r.informativa %}Revisar{% else %}Corregir{% endif %}</span></td>
+        <td style="font-size:.86rem;">{{ r.impacto }}</td>
+        <td class="num">{% if r.enlace and not r.ok %}<a href="{% url r.enlace %}">Ir</a>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% if detalles.duplicados or detalles.descuadres or detalles.ventas %}
+<section class="tarjeta separado">
+  <h2>Detalle de hallazgos</h2>
+  {% if detalles.duplicados %}<h3 class="separado">Posibles clientes duplicados</h3><ul>{% for grupo in detalles.duplicados %}<li>{% for c in grupo %}<a href="{% url 'maestros:cliente' c.pk %}">{{ c.nombre }}</a> ({{ c.documento }}){% if not forloop.last %} · {% endif %}{% endfor %}</li>{% endfor %}</ul>{% endif %}
+  {% if detalles.descuadres %}<h3 class="separado">Productos con stock descuadrado</h3><ul>{% for p in detalles.descuadres %}<li>{{ p.nombre }} ({{ p.codigo }})</li>{% endfor %}</ul>{% endif %}
+  {% if detalles.ventas %}<h3 class="separado">Ventas con total inconsistente</h3><ul>{% for v in detalles.ventas %}<li><a href="{% url 'comercial:venta' v.pk %}">{{ v.codigo }}</a></li>{% endfor %}</ul>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

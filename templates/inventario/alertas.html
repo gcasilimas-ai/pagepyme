@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Alertas de stock{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Alertas de stock</h1><p>Productos activos agotados o en su stock mínimo. Es la lista de reposición del día.</p></div></div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Agotados</h2><p>Cada día sin existencias es una venta que se puede perder.</p></div><span class="estado estado-quiebre">{{ agotados|length }}</span></div>
+    <table class="tabla">
+      <thead><tr><th>Producto</th><th class="num">Mínimo</th><th></th></tr></thead>
+      <tbody>{% for p in agotados %}<tr><td><a href="{% url 'maestros:producto' p.pk %}">{{ p.nombre }}</a><div class="tenue" style="font-size:.8rem;">{{ p.codigo }} · {{ p.categoria.nombre|default:"Sin categoría" }}</div></td><td class="num">{{ p.stock_minimo|num }}</td><td class="num"><a class="btn btn-pequeno" href="{% url 'inventario:movimiento_nuevo' %}?producto={{ p.pk }}&tipo=entrada">Registrar entrada</a></td></tr>{% empty %}<tr><td colspan="3" class="vacio">No hay productos agotados.</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>En el mínimo o por debajo</h2><p>Conviene pedirlos antes de que se agoten.</p></div><span class="estado estado-bajo">{{ bajos|length }}</span></div>
+    <table class="tabla">
+      <thead><tr><th>Producto</th><th class="num">Stock</th><th class="num">Mínimo</th><th></th></tr></thead>
+      <tbody>{% for p in bajos %}<tr><td><a href="{% url 'maestros:producto' p.pk %}">{{ p.nombre }}</a><div class="tenue" style="font-size:.8rem;">{{ p.codigo }}</div></td><td class="num">{{ p.stock_actual|num }}</td><td class="num">{{ p.stock_minimo|num }}</td><td class="num"><a class="btn btn-pequeno" href="{% url 'inventario:movimiento_nuevo' %}?producto={{ p.pk }}&tipo=entrada">Registrar entrada</a></td></tr>{% empty %}<tr><td colspan="4" class="vacio">Ningún producto está en su mínimo.</td></tr>{% endfor %}</tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}

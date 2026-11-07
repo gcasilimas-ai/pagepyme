@@ -1,0 +1,125 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}PAGE-PYME{% endblock %} · PAGE-PYME</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <link rel="icon" href="{% static 'img/icono.svg' %}" type="image/svg+xml">
+  {% block cabeza %}{% endblock %}
+</head>
+<body>
+{% with vista=request.resolver_match.view_name %}
+<div class="marco">
+  <aside class="lateral" id="lateral" aria-label="Navegación principal">
+    <a class="marca" href="{% url 'inicio' %}">
+      <span class="marca-sello" aria-hidden="true">PP</span>
+      <span class="marca-texto">PAGE-PYME<small>Gestión y analítica para pymes</small></span>
+    </a>
+
+    {% if permisos.tablero %}
+    <div class="nav-grupo">
+      <div class="nav-titulo">Análisis</div>
+      <a class="nav-enlace {% if vista == 'analitica:tablero' %}activo{% endif %}" href="{% url 'analitica:tablero' %}">Tablero de control</a>
+    </div>
+    {% endif %}
+
+    {% if permisos.comercial %}
+    <div class="nav-grupo">
+      <div class="nav-titulo">Comercial</div>
+      <a class="nav-enlace {% if 'comercial:venta' in vista %}activo{% endif %}" href="{% url 'comercial:ventas' %}">Ventas</a>
+      <a class="nav-enlace {% if 'comercial:cotizacion' in vista %}activo{% endif %}" href="{% url 'comercial:cotizaciones' %}">Cotizaciones</a>
+      <a class="nav-enlace {% if vista == 'comercial:cartera' %}activo{% endif %}" href="{% url 'comercial:cartera' %}">Cartera</a>
+      <a class="nav-enlace {% if 'maestros:cliente' in vista %}activo{% endif %}" href="{% url 'maestros:clientes' %}">Clientes</a>
+    </div>
+    {% endif %}
+
+    {% if permisos.productos_ver %}
+    <div class="nav-grupo">
+      <div class="nav-titulo">Inventario</div>
+      <a class="nav-enlace {% if 'maestros:producto' in vista %}activo{% endif %}" href="{% url 'maestros:productos' %}">Productos</a>
+      <a class="nav-enlace {% if 'maestros:categoria' in vista %}activo{% endif %}" href="{% url 'maestros:categorias' %}">Categorías</a>
+      {% if permisos.inventario %}
+      <a class="nav-enlace {% if 'inventario:movimiento' in vista %}activo{% endif %}" href="{% url 'inventario:movimientos' %}">Movimientos</a>
+      <a class="nav-enlace {% if vista == 'inventario:alertas' %}activo{% endif %}" href="{% url 'inventario:alertas' %}">Alertas de stock</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if permisos.importar or permisos.evidencia %}
+    <div class="nav-grupo">
+      <div class="nav-titulo">Datos</div>
+      {% if permisos.importar %}<a class="nav-enlace {% if 'maestros:importar' in vista or vista == 'maestros:lote' %}activo{% endif %}" href="{% url 'maestros:importar' %}">Importar desde Excel</a>{% endif %}
+      {% if permisos.evidencia %}
+      <a class="nav-enlace {% if vista == 'analitica:calidad' %}activo{% endif %}" href="{% url 'analitica:calidad' %}">Calidad de datos</a>
+      <a class="nav-enlace {% if 'analitica:exportar' in vista %}activo{% endif %}" href="{% url 'analitica:exportar' %}">Exportar</a>
+      <a class="nav-enlace {% if vista == 'uso' %}activo{% endif %}" href="{% url 'uso' %}">Uso de la plataforma</a>
+      <a class="nav-enlace {% if vista == 'sus_resultados' %}activo{% endif %}" href="{% url 'sus_resultados' %}">Usabilidad (SUS)</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if permisos.configuracion %}
+    <div class="nav-grupo">
+      <div class="nav-titulo">Configuración</div>
+      <a class="nav-enlace {% if vista == 'metas' %}activo{% endif %}" href="{% url 'metas' %}">Metas</a>
+      <a class="nav-enlace {% if vista == 'equipo' %}activo{% endif %}" href="{% url 'equipo' %}">Equipo</a>
+      <a class="nav-enlace {% if vista == 'empresa' %}activo{% endif %}" href="{% url 'empresa' %}">Datos de la empresa</a>
+    </div>
+    {% endif %}
+
+    {% if user.is_staff %}
+    <div class="nav-grupo">
+      <div class="nav-titulo">Equipo consultor</div>
+      <a class="nav-enlace {% if vista == 'piloto' %}activo{% endif %}" href="{% url 'piloto' %}">Resumen del piloto</a>
+      <a class="nav-enlace" href="{% url 'admin:index' %}">Administración</a>
+    </div>
+    {% endif %}
+
+    <div class="lateral-pie">
+      <a class="nav-enlace {% if vista == 'encuesta' %}activo{% endif %}" href="{% url 'encuesta' %}">Evaluar la plataforma</a>
+      <a class="nav-enlace {% if vista == 'ayuda' %}activo{% endif %}" href="{% url 'ayuda' %}">Guía de indicadores</a>
+      <div style="padding: 8px 10px 0;">
+        {{ user.get_full_name|default:user.username }}{% if rol_actual %} · {{ user.perfil.get_rol_display|default:"Consultor" }}{% endif %}
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="boton-texto" type="submit">Cerrar sesión</button></form>
+      </div>
+    </div>
+  </aside>
+
+  <div class="principal">
+    <header class="barra">
+      <div class="barra-empresa">
+        <button class="btn btn-pequeno menu-movil" type="button" aria-controls="lateral" aria-expanded="false" data-menu>Menú</button>
+        {% if empresa_actual %}
+          <strong>{{ empresa_actual.nombre }}</strong>
+          {% if empresa_actual.es_demo %}<span class="etiqueta-demo" title="Esta empresa tiene datos ficticios para demostración">Datos de demostración</span>{% endif %}
+        {% endif %}
+      </div>
+      {% if empresas_disponibles %}
+      <form class="selector-empresa" method="post" action="{% url 'cambiar_empresa' %}">
+        {% csrf_token %}
+        <input type="hidden" name="siguiente" value="{{ request.get_full_path }}">
+        <label class="tenue" for="selector-empresa" style="font-size:.8rem;">Empresa</label>
+        <select id="selector-empresa" name="empresa" data-autoenviar>
+          {% for e in empresas_disponibles %}<option value="{{ e.pk }}" {% if e.pk == empresa_actual.pk %}selected{% endif %}>{{ e.nombre }}</option>{% endfor %}
+        </select>
+      </form>
+      {% endif %}
+    </header>
+
+    <main class="contenido" id="contenido">
+      {% if messages %}
+      <div class="mensajes" role="status">
+        {% for m in messages %}<div class="mensaje {{ m.tags }}">{{ m }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      {% block contenido %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endwith %}
+<script src="{% static 'js/chart.umd.js' %}"></script>
+<script src="{% static 'js/app.js' %}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

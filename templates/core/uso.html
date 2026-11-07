@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titulo %}Uso de la plataforma{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Uso de la plataforma</h1><p>Bitácora automática de lo que hace cada usuario. Es la evidencia de adopción durante el piloto.</p></div>
+  <a class="btn" href="{% url 'analitica:exportar_archivo' 'actividad' %}?periodo=anio">Descargar bitácora</a>
+</div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Últimas 8 semanas</h2><p>Acciones registradas, usuarios distintos y días con uso.</p></div></div>
+    <table class="tabla">
+      <thead><tr><th>Semana del</th><th class="num">Acciones</th><th></th><th class="num">Usuarios</th><th class="num">Días con uso</th></tr></thead>
+      <tbody>
+      {% for f in filas %}
+      <tr>
+        <td>{{ f.semana|date:"j M" }}</td>
+        <td class="num">{{ f.acciones }}</td>
+        <td style="width:35%"><div class="barra-h" role="img" aria-label="{{ f.acciones }} acciones"><span style="width:{% widthratio f.acciones max_acciones 100 %}%"></span></div></td>
+        <td class="num">{{ f.usuarios }}</td>
+        <td class="num">{{ f.dias }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Usuarios</h2></div>
+    <table class="tabla">
+      <thead><tr><th>Usuario</th><th>Rol</th><th>Última actividad</th></tr></thead>
+      <tbody>{% for p, ultima in usuarios %}<tr><td>{{ p.usuario.get_full_name|default:p.usuario.username }}</td><td>{{ p.get_rol_display }}</td><td>{{ ultima|date:"j M Y, H:i"|default:"Sin actividad" }}</td></tr>{% endfor %}</tbody>
+    </table>
+    <h3 class="separado">Acciones por módulo</h3>
+    {% if modulos %}
+    <table class="tabla"><tbody>{% for m, n in modulos %}<tr><td>{{ m|capfirst }}</td><td class="num">{{ n }}</td></tr>{% endfor %}</tbody></table>
+    {% else %}<p class="vacio">Aún no hay registros.</p>{% endif %}
+  </section>
+</div>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><h2>Actividad reciente</h2></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Fecha</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Detalle</th></tr></thead>
+    <tbody>{% for r in recientes %}<tr><td>{{ r.fecha|date:"j M Y, H:i" }}</td><td>{{ r.usuario.username|default:"—" }}</td><td>{{ r.modulo }}</td><td>{{ r.accion }}</td><td>{{ r.detalle }}</td></tr>{% empty %}<tr><td colspan="5" class="vacio">Aún no hay registros.</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

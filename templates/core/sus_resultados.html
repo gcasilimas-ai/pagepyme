@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Usabilidad (SUS){% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Usabilidad percibida (SUS)</h1><p>Puntaje de 0 a 100 calculado con el procedimiento estándar del System Usability Scale.</p></div>
+  <div class="acciones"><a class="btn" href="{% url 'encuesta' %}">Responder la encuesta</a><a class="btn" href="{% url 'analitica:exportar_archivo' 'sus' %}">Descargar respuestas</a></div>
+</div>
+<div class="rejilla rejilla-3">
+  <section class="tarjeta"><div class="cifra-etiqueta">Puntaje promedio</div><div class="indice">{% if promedio is not None %}{{ promedio|num:1 }}{% else %}—{% endif %}</div><div class="tenue">{{ interpretacion|default:"Sin respuestas todavía" }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Respuestas</div><div class="indice">{{ respuestas|length }}</div><div class="tenue">Una por persona y momento de aplicación</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Meta del piloto</div><div class="indice">&gt; 70</div><div class="tenue">El promedio de referencia del instrumento es 68.</div></section>
+</div>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Promedio por afirmación</h2><p>En las afirmaciones positivas (impares) conviene un valor alto; en las negativas (pares), uno bajo.</p></div></div>
+  <table class="tabla">
+    <thead><tr><th>#</th><th>Afirmación</th><th>Sentido</th><th class="num">Promedio (1–5)</th></tr></thead>
+    <tbody>{% for i in por_item %}<tr><td>{{ i.n }}</td><td>{{ i.pregunta }}</td><td>{% if i.positiva %}Positiva{% else %}Negativa{% endif %}</td><td class="num">{% if i.promedio is not None %}{{ i.promedio|num:2 }}{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+  </table>
+</section>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><h2>Respuestas individuales</h2></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Fecha</th><th>Usuario</th><th class="num">Puntaje</th><th>Comentario</th></tr></thead>
+    <tbody>{% for r in respuestas %}<tr><td>{{ r.fecha|date:"j M Y" }}</td><td>{{ r.usuario.username|default:"—" }}</td><td class="num">{{ r.puntaje|num:1 }}</td><td>{{ r.comentario|default:"—" }}</td></tr>{% empty %}<tr><td colspan="4" class="vacio">Aún no hay respuestas. Pide a cada usuario que entre a «Evaluar la plataforma».</td></tr>{% endfor %}</tbody>
+  </table>
+  </div>
+</section>
+<p class="tenue separado" style="font-size:.85rem;">Cálculo: en los ítems impares se resta 1 a la respuesta; en los pares, la respuesta se resta de 5. La suma (0 a 40) se multiplica por 2,5. Interpretación según la escala adjetiva de Bangor, Kortum y Miller (2009).</p>
+{% endblock %}

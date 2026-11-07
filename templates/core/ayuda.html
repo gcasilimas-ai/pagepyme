@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Guía de indicadores{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Guía de indicadores</h1><p>Qué mide cada indicador, cómo se calcula y qué decisión ayuda a tomar.</p></div></div>
+<div class="rejilla rejilla-2">
+  {% for i in indicadores %}
+  <section class="tarjeta">
+    <h2>{{ i.nombre }}</h2>
+    <dl class="definiciones">
+      <dt>Fórmula</dt><dd><span class="formula">{{ i.formula }}</span></dd>
+      <dt>Unidad y sentido</dt><dd>{{ i.unidad }} · {% if i.direccion == "mayor" %}mejora cuando sube{% else %}mejora cuando baja{% endif %}</dd>
+      <dt>Meta actual de la empresa</dt><dd>{% if i.meta is not None %}{% if i.direccion == 'menor' %}≤ {% else %}≥ {% endif %}{{ i.meta|valor_ind:i.unidad }}{% else %}Sin definir{% endif %}</dd>
+      <dt>Decisión que apoya</dt><dd>{{ i.decision }}</dd>
+    </dl>
+  </section>
+  {% endfor %}
+</div>
+<section class="tarjeta separado">
+  <h2>Cómo se clasifica el estado</h2>
+  <dl class="definiciones">
+    <dt>Cumplimiento</dt><dd>Valor ÷ meta × 100 cuando el indicador mejora al subir; meta ÷ valor × 100 cuando mejora al bajar.</dd>
+    <dt><span class="estado estado-cumple">Cumple la meta</span></dt><dd>El valor alcanza o supera la meta en el sentido correcto.</dd>
+    <dt><span class="estado estado-riesgo">En riesgo</span></dt><dd>No alcanza la meta, pero el cumplimiento es de al menos 90 %.</dd>
+    <dt><span class="estado estado-critico">Crítico</span></dt><dd>El cumplimiento es inferior a 90 %.</dd>
+    <dt>Origen de los datos</dt><dd>Todos los indicadores se calculan sobre las vistas analíticas de ventas, movimientos de inventario y recaudos, construidas a partir de lo que la empresa registra en la plataforma. Las ventas anuladas no se cuentan.</dd>
+  </dl>
+</section>
+{% endblock %}

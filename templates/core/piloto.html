@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Resumen del piloto{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Resumen del piloto</h1><p>Empresas reales vinculadas (se excluyen las de demostración). Indicadores de los últimos 30 días, del {{ inicio|date:"j M" }} al {{ fin|date:"j M Y" }}.</p></div>
+</div>
+<div class="rejilla rejilla-4">
+  <section class="tarjeta"><div class="cifra-etiqueta">Empresas en el piloto</div><div class="indice">{{ filas|length }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Usuarios activos</div><div class="indice">{{ total_usuarios }}</div><div class="tenue">con acceso a la plataforma</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">SUS promedio del piloto</div><div class="indice">{% if sus_global is not None %}{{ sus_global|num:1 }}{% else %}—{% endif %}</div><div class="tenue">{{ n_sus_global }} respuesta{{ n_sus_global|pluralize }} · {{ interpretacion|default:"sin datos" }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Empresas activas esta semana</div><div class="indice">{% with a=adopcion|last %}{{ a.activas }}{% endwith %}</div><div class="tenue">de {{ filas|length }}</div></section>
+</div>
+
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Caracterización de las empresas</h2><p>Datos registrados por cada gerente en «Datos de la empresa».</p></div></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Empresa</th><th>Ciudad</th><th class="num">Empleados</th><th class="num">Años</th><th>Herramienta previa</th><th>Vinculación</th><th class="num">Usuarios</th><th class="num">Productos</th><th class="num">Clientes</th><th class="num">Ventas</th></tr></thead>
+    <tbody>
+    {% for f in filas %}
+      <tr><td>{{ f.empresa.nombre }}</td><td>{{ f.empresa.ciudad }}</td><td class="num">{{ f.empresa.numero_empleados|default:"—" }}</td><td class="num">{{ f.empresa.anios_operacion|default:"—" }}</td><td>{{ f.empresa.herramienta_previa|default:"—" }}</td><td>{{ f.empresa.fecha_vinculacion|date:"j M Y"|default:"—" }}</td><td class="num">{{ f.usuarios }}</td><td class="num">{{ f.productos }}</td><td class="num">{{ f.clientes }}</td><td class="num">{{ f.ventas }}</td></tr>
+    {% empty %}<tr><td colspan="10" class="vacio">Todavía no hay empresas del piloto. Créalas en Administración → Empresas y asígnales un usuario gerente.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Adopción semanal</h2><p>Porcentaje de empresas con al menos una acción registrada en la semana (indicador de adopción, meta ≥ 80 %).</p></div></div>
+  <table class="tabla">
+    <thead><tr><th>Semana del</th>{% for f in filas %}<th class="num">{{ f.empresa.nombre|truncatechars:18 }}</th>{% endfor %}<th class="num">Empresas activas</th></tr></thead>
+    <tbody>
+    {% for a in adopcion %}
+      <tr><td>{{ a.semana|date:"j M" }}</td>
+        {% for n in a.por_empresa %}<td class="num">{{ n }}</td>{% endfor %}
+        <td class="num">{% if a.pct is not None %}{{ a.pct }} %{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="tenue separado" style="font-size:.82rem;">Las celdas por empresa muestran el número de acciones registradas en la bitácora.</p>
+</section>
+
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Indicadores de negocio por empresa</h2><p>Mismas fórmulas y metas que ve cada gerente en su tablero.</p></div></div>
+  <div class="tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Empresa</th>{% if filas %}{% for i in filas.0.indicadores %}<th class="num">{{ i.nombre }}</th>{% endfor %}{% endif %}<th class="num">SUS</th></tr></thead>
+    <tbody>
+    {% for f in filas %}
+      <tr><td>{{ f.empresa.nombre }}</td>
+        {% for i in f.indicadores %}<td class="num">{{ i.valor|valor_ind:i.unidad }}<br><span class="estado estado-{{ i.estado }}">{{ i.estado_texto }}</span></td>{% endfor %}
+        <td class="num">{% if f.sus is not None %}{{ f.sus|num:1 }} <span class="tenue">(n={{ f.n_sus }})</span>{% else %}—{% endif %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</section>
+{% endblock %}

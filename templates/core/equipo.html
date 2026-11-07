@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Equipo{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Equipo</h1><p>Personas de la empresa que usan PAGE-PYME y lo que puede hacer cada rol.</p></div></div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Usuarios</h2></div>
+    <div class="tabla-contenedor">
+    <table class="tabla">
+      <thead><tr><th>Usuario</th><th>Nombre</th><th>Rol</th><th>Último ingreso</th><th></th></tr></thead>
+      <tbody>
+      {% for p in perfiles %}
+        <tr>
+          <td>{{ p.usuario.username }}</td>
+          <td>{{ p.usuario.get_full_name|default:"—" }}</td>
+          <td>{{ p.get_rol_display }}</td>
+          <td>{{ p.usuario.last_login|date:"j M Y, H:i"|default:"Nunca" }}</td>
+          <td class="num">
+            {% if p.usuario != user %}
+            <form method="post" action="{% url 'equipo_estado' p.pk %}">{% csrf_token %}
+              <button class="btn btn-pequeno {% if p.usuario.is_active %}btn-peligro{% endif %}" type="submit">{% if p.usuario.is_active %}Desactivar{% else %}Activar{% endif %}</button>
+            </form>
+            {% else %}<span class="tenue">Tú</span>{% endif %}
+          </td>
+        </tr>
+      {% empty %}<tr><td colspan="5" class="vacio">Aún no hay usuarios.</td></tr>{% endfor %}
+      </tbody>
+    </table>
+    </div>
+    <dl class="definiciones">
+      <dt>Gerente / propietario</dt><dd>Todo: tablero, comercial, inventario, importación, metas, equipo y evidencia del piloto.</dd>
+      <dt>Comercial</dt><dd>Tablero, clientes, cotizaciones, ventas, cartera y consulta de productos.</dd>
+      <dt>Bodega</dt><dd>Productos, categorías, movimientos de inventario y alertas de stock.</dd>
+    </dl>
+  </section>
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Agregar usuario</h2></div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="campos">{% for field in form %}{% include "core/_campo.html" %}{% endfor %}</div>
+      <div class="botonera"><button class="btn btn-primario" type="submit">Crear usuario</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Cartera{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Cartera</h1><p>Ventas a crédito con saldo pendiente al {{ hoy|date:"j \d\e F \d\e Y"|lower }}, de la más vencida a la más reciente.</p></div>
+  <a class="btn" href="?{% if not solo_vencidas %}vencidas=1{% endif %}">{% if solo_vencidas %}Ver toda la cartera{% else %}Ver solo vencidas{% endif %}</a>
+</div>
+<div class="rejilla rejilla-3">
+  <section class="tarjeta"><div class="cifra-etiqueta">Saldo total</div><div class="cifra">{{ total|cop }}</div></section>
+  <section class="tarjeta"><div class="cifra-etiqueta">Saldo vencido</div><div class="cifra">{{ vencido|cop }}</div></section>
+  <section class="tarjeta">
+    <div class="cifra-etiqueta">Por antigüedad</div>
+    <table class="tabla" style="margin-top:4px;"><tbody>{% for t in tramos %}<tr><td>{{ t.tramo }}</td><td class="num">{{ t.saldo|cop }}</td></tr>{% endfor %}</tbody></table>
+  </section>
+</div>
+<div class="tarjeta separado tabla-contenedor">
+  <table class="tabla">
+    <thead><tr><th>Venta</th><th>Cliente</th><th>Teléfono</th><th>Fecha</th><th>Vence</th><th class="num">Total</th><th class="num">Saldo</th><th>Estado</th></tr></thead>
+    <tbody>
+    {% for v in filas %}
+      <tr><td><a href="{% url 'comercial:venta' v.pk %}">{{ v.codigo }}</a></td><td><a href="{% url 'maestros:cliente' v.cliente.pk %}">{{ v.cliente.nombre }}</a></td><td>{{ v.cliente.telefono|default:"—" }}</td>
+        <td>{{ v.fecha|date:"j M Y" }}</td><td>{{ v.fecha_vencimiento|date:"j M Y" }}</td><td class="num">{{ v.total|cop }}</td><td class="num">{{ v.saldo_corte|cop }}</td>
+        <td>{% if v.dias_vencida_corte > 0 %}<span class="estado {% if v.dias_vencida_corte > 60 %}estado-critico{% else %}estado-riesgo{% endif %}">{{ v.dias_vencida_corte }} días de mora</span>{% else %}<span class="estado estado-cumple">Al día</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="8" class="vacio">No hay cartera pendiente{% if solo_vencidas %} vencida{% endif %}.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

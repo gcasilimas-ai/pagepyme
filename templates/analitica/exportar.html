@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block titulo %}Exportar{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Exportar datos</h1><p>Descarga en Excel los datos de la capa analítica para verificarlos, analizarlos en otra herramienta o anexarlos como evidencia.</p></div>
+  <form method="get" class="periodo">
+    <label class="tenue" for="periodo" style="font-size:.85rem;">Periodo</label>
+    <select id="periodo" name="periodo" data-periodo>{% for clave, nombre in periodos %}<option value="{{ clave }}" {% if clave == periodo %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select>
+    <span data-personalizado class="periodo" {% if periodo != 'personalizado' %}hidden{% endif %}>
+      <input type="date" name="desde" value="{{ inicio|date:'Y-m-d' }}" aria-label="Desde"><input type="date" name="hasta" value="{{ fin|date:'Y-m-d' }}" aria-label="Hasta">
+      <button class="btn btn-pequeno" type="submit">Aplicar</button>
+    </span>
+  </form>
+</div>
+<div class="tarjeta tabla-contenedor">
+  <p class="tenue">Periodo seleccionado: del {{ inicio|date:"j \d\e F \d\e Y"|lower }} al {{ fin|date:"j \d\e F \d\e Y"|lower }}. Las respuestas SUS se descargan completas.</p>
+  <table class="tabla">
+    <thead><tr><th>Conjunto</th><th>Contenido</th><th></th></tr></thead>
+    <tbody>{% for clave, descripcion in conjuntos.items %}<tr><td>{{ clave|capfirst }}</td><td>{{ descripcion }}</td><td class="num"><a class="btn btn-pequeno" href="{% url 'analitica:exportar_archivo' clave %}?{{ request.GET.urlencode }}">Descargar .xlsx</a></td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}
