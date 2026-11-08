@@ -1,0 +1,17 @@
+{% load formato %}<div class="tabla-contenedor"><table class="tabla">
+  <thead><tr><th>Cliente</th><th>Última compra</th><th class="num">Días sin comprar</th><th class="num">Compra cada</th><th class="num">Compras</th><th class="num">Valor histórico</th><th>Última gestión</th><th></th></tr></thead>
+  <tbody>
+  {% for c in filas %}
+    <tr>
+      <td><a href="{% url 'maestros:cliente' c.cliente.pk %}">{{ c.cliente.nombre }}</a><span class="subtexto">{{ c.cliente.telefono|default:"Sin teléfono" }}</span></td>
+      <td>{{ c.ultima|date:"j M Y" }}</td>
+      <td class="num"><span class="estado {% if c.grupo == 'riesgo' %}estado-riesgo{% else %}estado-critico{% endif %}">{{ c.dias }} días</span></td>
+      <td class="num">{% if c.intervalo %}{{ c.intervalo }} días{% else %}—{% endif %}</td>
+      <td class="num">{{ c.compras }}</td>
+      <td class="num">{{ c.total|cop }}</td>
+      <td>{% if c.gestion %}{{ c.gestion.get_resultado_display }}<span class="subtexto">{{ c.gestion.fecha|date:"j M" }}{% if c.gestion.proxima_fecha %} · próximo: {{ c.gestion.proxima_fecha|date:"j M" }}{% endif %}</span>{% else %}<span class="tenue">Sin gestión</span>{% endif %}</td>
+      <td class="num"><a class="btn btn-pequeno" href="{% url 'comercial:seguimiento_nuevo' %}?cliente={{ c.cliente.pk }}&siguiente={{ request.get_full_path|urlencode }}">Registrar gestión</a></td>
+    </tr>
+  {% empty %}<tr><td colspan="8" class="vacio">Ningún cliente en este grupo.</td></tr>{% endfor %}
+  </tbody>
+</table></div>

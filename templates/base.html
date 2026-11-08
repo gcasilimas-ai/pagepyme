@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titulo %}PAGE-PYME{% endblock %} · PAGE-PYME</title>
+  <title>{% block titulo %}PAGE·PYME{% endblock %} · PAGE·PYME</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="icon" href="{% static 'img/icono.svg' %}" type="image/svg+xml">
   {% block cabeza %}{% endblock %}
@@ -12,15 +12,13 @@
 {% with vista=request.resolver_match.view_name %}
 <div class="marco">
   <aside class="lateral" id="lateral" aria-label="Navegación principal">
-    <a class="marca" href="{% url 'inicio' %}">
-      <span class="marca-sello" aria-hidden="true">PP</span>
-      <span class="marca-texto">PAGE-PYME<small>Gestión y analítica para pymes</small></span>
-    </a>
+    <a class="logo" href="{% url 'inicio' %}" aria-label="PAGE·PYME, inicio">{% include "core/_logo.html" %}</a>
 
     {% if permisos.tablero %}
     <div class="nav-grupo">
       <div class="nav-titulo">Análisis</div>
-      <a class="nav-enlace {% if vista == 'analitica:tablero' %}activo{% endif %}" href="{% url 'analitica:tablero' %}">Tablero de control</a>
+      <a class="nav-enlace {% if vista == 'analitica:comercial' %}activo{% endif %}" href="{% url 'analitica:comercial' %}">Tablero comercial</a>
+      <a class="nav-enlace {% if vista == 'analitica:tablero' %}activo{% endif %}" href="{% url 'analitica:tablero' %}">Tablero general</a>
     </div>
     {% endif %}
 
@@ -31,6 +29,7 @@
       <a class="nav-enlace {% if 'comercial:cotizacion' in vista %}activo{% endif %}" href="{% url 'comercial:cotizaciones' %}">Cotizaciones</a>
       <a class="nav-enlace {% if vista == 'comercial:cartera' %}activo{% endif %}" href="{% url 'comercial:cartera' %}">Cartera</a>
       <a class="nav-enlace {% if 'maestros:cliente' in vista %}activo{% endif %}" href="{% url 'maestros:clientes' %}">Clientes</a>
+      <a class="nav-enlace {% if 'comercial:seguimiento' in vista %}activo{% endif %}" href="{% url 'comercial:seguimientos' %}">Seguimiento de clientes</a>
     </div>
     {% endif %}
 
@@ -79,8 +78,9 @@
     <div class="lateral-pie">
       <a class="nav-enlace {% if vista == 'encuesta' %}activo{% endif %}" href="{% url 'encuesta' %}">Evaluar la plataforma</a>
       <a class="nav-enlace {% if vista == 'ayuda' %}activo{% endif %}" href="{% url 'ayuda' %}">Guía de indicadores</a>
-      <div style="padding: 8px 10px 0;">
-        {{ user.get_full_name|default:user.username }}{% if rol_actual %} · {{ user.perfil.get_rol_display|default:"Consultor" }}{% endif %}
+      <div class="usuario-actual">
+        <strong>{{ user.get_full_name|default:user.username }}</strong>
+        {% if user.is_staff %}Administrador{% else %}{{ user.perfil.get_rol_display }}{% endif %}
         <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="boton-texto" type="submit">Cerrar sesión</button></form>
       </div>
     </div>

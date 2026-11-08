@@ -13,7 +13,7 @@ TIPOS_MANUALES = [
 
 
 class MovimientoForm(forms.Form):
-    producto = forms.ModelChoiceField(queryset=Producto.objects.none())
+    producto = forms.ModelChoiceField(queryset=Producto.objects.none(), empty_label="Selecciona el producto")
     tipo = forms.ChoiceField(choices=TIPOS_MANUALES)
     cantidad = forms.IntegerField(min_value=1)
     costo_unitario = forms.DecimalField(

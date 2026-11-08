@@ -1,4 +1,4 @@
-/* PAGE-PYME · comportamiento del lado del cliente */
+/* PAGE·PYME · comportamiento del lado del cliente */
 (function () {
   "use strict";
 
@@ -112,16 +112,29 @@
     recalcular();
   }
 
+  // ---------- pestañas ----------
+  document.querySelectorAll("[data-pestanas]").forEach(function (grupo) {
+    var botones = grupo.querySelectorAll("[data-pestana]");
+    botones.forEach(function (boton) {
+      boton.addEventListener("click", function () {
+        botones.forEach(function (b) { b.setAttribute("aria-selected", b === boton ? "true" : "false"); });
+        grupo.querySelectorAll("[data-panel]").forEach(function (panel) {
+          panel.hidden = panel.getAttribute("data-panel") !== boton.getAttribute("data-pestana");
+        });
+      });
+    });
+  });
+
   // ---------- gráficas del tablero ----------
   if (typeof Chart === "undefined") { return; }
   var datos = function (id) {
     var el = document.getElementById(id);
     return el ? JSON.parse(el.textContent) : null;
   };
-  var SERIE = "#1b5faa";
-  var TINTA = "#17202b";
-  var TENUE = "#667185";
-  var REJILLA = "#eceef1";
+  var SERIE = "#1f5bd1";
+  var TINTA = "#101828";
+  var TENUE = "#667085";
+  var REJILLA = "#f0f2f5";
   Chart.defaults.font.family = '"IBM Plex Sans", system-ui, sans-serif';
   Chart.defaults.font.size = 12;
   Chart.defaults.color = TENUE;
@@ -222,5 +235,69 @@
   if (top && document.getElementById("g-top")) {
     barrasHorizontales(document.getElementById("g-top"),
       top.map(function (t) { return t.producto; }), top.map(function (t) { return t.contribucion; }), "Contribución");
+  }
+
+  // ---------- tablero comercial ----------
+  var avance = datos("datos-avance");
+  if (avance && document.getElementById("g-avance")) {
+    var hayMeta = avance.some(function (d) { return d.meta !== null; });
+    var conjuntos = [{
+      label: "Ventas acumuladas", data: avance.map(function (d) { return d.ventas; }), borderColor: SERIE,
+      backgroundColor: "rgba(31, 91, 209, 0.08)", fill: true, borderWidth: 2, pointRadius: 0, pointHoverRadius: 5, tension: 0,
+    }];
+    if (hayMeta) {
+      conjuntos.push({ label: "Meta acumulada", data: avance.map(function (d) { return d.meta; }), borderColor: TINTA,
+        borderWidth: 1.5, borderDash: [5, 4], pointRadius: 0, pointHoverRadius: 0, fill: false });
+    }
+    new Chart(document.getElementById("g-avance"), {
+      type: "line",
+      data: { labels: avance.map(function (d) { return d.dia; }), datasets: conjuntos },
+      options: {
+        interaction: { mode: "index", intersect: false },
+        scales: { x: Object.assign({}, ejeCategorias, { ticks: { padding: 6, maxTicksLimit: 10 } }), y: ejeValores(copCorto) },
+        plugins: { tooltip: { callbacks: {
+          title: function (it) { return "Día " + it[0].label; },
+          label: function (it) { return it.parsed.y === null ? null : it.dataset.label + ": " + cop(it.parsed.y); },
+        } } },
+      },
+    });
+  }
+
+  var mensual = datos("datos-mensual");
+  if (mensual && document.getElementById("g-mensual")) {
+    new Chart(document.getElementById("g-mensual"), {
+      type: "bar",
+      data: {
+        labels: mensual.map(function (m) { return m.etiqueta + (m.en_curso ? "*" : ""); }),
+        datasets: [
+          { type: "bar", label: "Ventas", data: mensual.map(function (m) { return m.ventas; }),
+            backgroundColor: mensual.map(function (m) { return m.en_curso ? "rgba(31, 91, 209, 0.45)" : SERIE; }),
+            borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: "bottom", maxBarThickness: 30, order: 2 },
+          { type: "line", label: "Meta", data: mensual.map(function (m) { return m.meta; }), borderColor: TINTA,
+            borderWidth: 1.5, borderDash: [5, 4], pointRadius: 3, pointBackgroundColor: TINTA, spanGaps: false, order: 1 },
+        ],
+      },
+      options: {
+        interaction: { mode: "index", intersect: false },
+        scales: { x: ejeCategorias, y: ejeValores(copCorto) },
+        plugins: { tooltip: { callbacks: {
+          title: function (it) { var m = mensual[it[0].dataIndex]; return m.etiqueta + (m.en_curso ? " (mes en curso)" : ""); },
+          label: function (it) {
+            if (it.parsed.y === null) { return it.dataset.label + ": sin meta"; }
+            return it.dataset.label + ": " + cop(it.parsed.y);
+          },
+          afterBody: function (it) {
+            var m = mensual[it[0].dataIndex];
+            return m.cumplimiento !== null ? "Cumplimiento: " + miles.format(m.cumplimiento) + " %" : "";
+          },
+        } } },
+      },
+    });
+  }
+
+  var vendidos = datos("datos-top-vendidos");
+  if (vendidos && vendidos.length && document.getElementById("g-top-vendidos")) {
+    barrasHorizontales(document.getElementById("g-top-vendidos"),
+      vendidos.map(function (v) { return v.producto; }), vendidos.map(function (v) { return v.ingreso; }), "Ventas");
   }
 })();

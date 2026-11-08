@@ -5,7 +5,7 @@
 <div class="encabezado">
   <div><p style="margin:0;"><a href="{% url 'maestros:clientes' %}">Clientes</a></p><h1>{{ cliente.nombre }}</h1>
     <p>{{ cliente.get_tipo_documento_display }} {{ cliente.documento }} · {{ cliente.ciudad|default:"Sin ciudad" }} · {% if cliente.plazo_credito_dias %}Crédito a {{ cliente.plazo_credito_dias }} días{% else %}Solo contado{% endif %}</p></div>
-  <div class="acciones"><a class="btn" href="{% url 'comercial:cotizacion_nueva' %}">Nueva cotización</a><a class="btn btn-primario" href="{% url 'maestros:cliente_editar' cliente.pk %}">Editar</a></div>
+  <div class="acciones"><a class="btn" href="{% url 'comercial:seguimiento_nuevo' %}?cliente={{ cliente.pk }}&siguiente={{ request.get_full_path|urlencode }}">Registrar gestión</a><a class="btn" href="{% url 'comercial:cotizacion_nueva' %}">Nueva cotización</a><a class="btn btn-primario" href="{% url 'maestros:cliente_editar' cliente.pk %}">Editar</a></div>
 </div>
 <div class="rejilla rejilla-3">
   <section class="tarjeta"><div class="cifra-etiqueta">Saldo pendiente</div><div class="cifra">{{ saldo_total|cop }}</div><div class="tenue">{{ ventas_con_saldo|length }} venta{{ ventas_con_saldo|length|pluralize }} con saldo</div></section>
@@ -20,5 +20,12 @@
     <tbody>{% for v in ventas %}<tr><td><a href="{% url 'comercial:venta' v.pk %}">{{ v.codigo }}</a></td><td>{{ v.fecha|date:"j M Y" }}</td><td>{{ v.get_forma_pago_display }}</td><td class="num">{{ v.total|cop }}</td><td class="num">{{ v.saldo|cop }}</td><td>{{ v.get_estado_display }}</td></tr>{% empty %}<tr><td colspan="6" class="vacio">Este cliente aún no tiene ventas.</td></tr>{% endfor %}</tbody>
   </table>
   </div>
+</section>
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Gestiones comerciales</h2><p>Llamadas, visitas y mensajes registrados con este cliente.</p></div></div>
+  <div class="tabla-contenedor"><table class="tabla">
+    <thead><tr><th>Fecha</th><th>Canal</th><th>Resultado</th><th>Detalle</th><th>Próximo paso</th><th>Usuario</th></tr></thead>
+    <tbody>{% for s in seguimientos %}<tr><td>{{ s.fecha|date:"j M Y" }}</td><td>{{ s.get_canal_display }}</td><td>{{ s.get_resultado_display }}</td><td>{{ s.nota|default:"—" }}</td><td>{% if s.proxima_fecha %}{{ s.proxima_fecha|date:"j M Y" }} · {{ s.proxima_accion }}{% else %}—{% endif %}</td><td>{{ s.usuario.username|default:"—" }}</td></tr>{% empty %}<tr><td colspan="6" class="vacio">Aún no hay gestiones con este cliente.</td></tr>{% endfor %}</tbody>
+  </table></div>
 </section>
 {% endblock %}

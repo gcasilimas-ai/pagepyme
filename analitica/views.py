@@ -9,7 +9,7 @@ from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from comercial.models import ItemVenta, Venta
+from comercial.models import ItemVenta, Seguimiento, Venta
 from core.actividad import registrar
 from core.models import RegistroActividad, RespuestaSUS
 from core.permisos import requiere
@@ -17,6 +17,7 @@ from inventario.models import MovimientoInventario
 from maestros.importacion import normalizar_nombre
 from maestros.models import Cliente, Producto
 
+from . import comercial as com
 from . import indicadores as ind
 from .models import FactMovimiento, FactRecaudo, FactVenta
 
@@ -234,6 +235,7 @@ CONJUNTOS = {
     "indicadores": "Indicadores del periodo con su fórmula y cálculo",
     "actividad": "Bitácora de uso de la plataforma",
     "sus": "Respuestas de la encuesta de usabilidad (SUS)",
+    "seguimientos": "Gestiones comerciales con clientes",
 }
 
 
@@ -284,6 +286,13 @@ def exportar_archivo(request, conjunto):
         filas = [(timezone.localtime(r.fecha).replace(tzinfo=None), r.usuario.get_username() if r.usuario else "",
                   r.modulo, r.accion, r.detalle) for r in qs]
         contenido = _libro("Actividad", ["Fecha y hora", "Usuario", "Módulo", "Acción", "Detalle"], filas)
+    elif conjunto == "seguimientos":
+        qs = Seguimiento.objects.filter(empresa=empresa, fecha__gte=inicio, fecha__lte=fin) \
+            .select_related("cliente", "usuario").order_by("fecha")
+        filas = [(s.fecha, s.cliente.nombre, s.get_canal_display(), s.get_resultado_display(), s.nota,
+                  s.proxima_fecha, s.proxima_accion, s.usuario.get_username() if s.usuario else "") for s in qs]
+        contenido = _libro("Seguimientos", ["Fecha", "Cliente", "Canal", "Resultado", "Detalle", "Próximo contacto",
+                                            "Próxima acción", "Usuario"], filas)
     else:
         qs = RespuestaSUS.objects.filter(empresa=empresa).select_related("usuario").order_by("fecha")
         filas = [(timezone.localtime(r.fecha).replace(tzinfo=None), r.usuario.get_username() if r.usuario else "",
@@ -294,3 +303,64 @@ def exportar_archivo(request, conjunto):
     respuesta = HttpResponse(contenido, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     respuesta["Content-Disposition"] = f'attachment; filename="pagepyme_{conjunto}_{inicio:%Y%m%d}_{fin:%Y%m%d}.xlsx"'
     return respuesta
+
+
+# --------------------------------------------------------------------------- tablero comercial
+
+def resolver_mes(request, empresa):
+    """Mes analizado (parámetro ``mes`` como AAAA-MM) y fecha de corte de los datos."""
+    referencia = fecha_referencia(empresa)
+    try:
+        anio, mes = (int(x) for x in request.GET.get("mes", "").split("-"))
+        if not 1 <= mes <= 12 or not 2000 <= anio <= 2100:
+            raise ValueError
+    except ValueError:
+        anio, mes = referencia.year, referencia.month
+    inicio, fin = com.limites_mes(anio, mes)
+    corte = min(fin, referencia) if inicio <= referencia else inicio
+    return anio, mes, corte, referencia
+
+
+@requiere("tablero")
+def tablero_comercial(request):
+    empresa = request.empresa
+    anio, mes, corte, referencia = resolver_mes(request, empresa)
+    avance = com.avance_meta(empresa, anio, mes, corte)
+    inicio = avance.inicio
+    corte_datos = max(corte, inicio)
+    resumen = com.resumen_mes(empresa, inicio, corte_datos)
+    top = com.top_productos(empresa, inicio, corte_datos)
+    clientes = com.clasificar_clientes(empresa, corte_datos)
+    pendientes = com.seguimientos_pendientes(empresa, corte_datos)
+    abiertas, total_abiertas, n_abiertas = com.cotizaciones_abiertas(empresa, corte_datos)
+    acciones = com.acciones_comerciales(empresa, avance, resumen, top, clientes, pendientes, abiertas,
+                                        total_abiertas, corte_datos)
+    opciones_mes = []
+    for i in range(0, 13):
+        a, m = com.mes_anterior(referencia.year, referencia.month, i)
+        opciones_mes.append({"valor": f"{a}-{m:02d}", "nombre": f"{com.MESES[m - 1].capitalize()} {a}"})
+    if request.GET:
+        registrar(request, "tablero", "Consulta del tablero comercial", f"{anio}-{mes:02d}")
+    return render(request, "analitica/comercial.html", {
+        "avance": avance,
+        "resumen": resumen,
+        "top": top,
+        "lineas": com.ventas_por_linea(empresa, inicio, corte_datos),
+        "mejores": com.mejores_clientes(empresa, inicio, corte_datos),
+        "clientes": clientes,
+        "por_recuperar": len(clientes["dejo"]) + len(clientes["riesgo"]),
+        "valor_por_recuperar": sum((c["total"] for c in clientes["dejo"] + clientes["riesgo"]), 0),
+        "pendientes": pendientes,
+        "atrasados": sum(1 for s in pendientes if s.atraso > 0),
+        "abiertas": abiertas,
+        "total_abiertas": total_abiertas,
+        "n_abiertas": n_abiertas,
+        "acciones": acciones,
+        "serie_diaria": com.serie_diaria(empresa, avance),
+        "serie_mensual": com.serie_mensual(empresa, anio, mes, corte_datos),
+        "opciones_mes": opciones_mes,
+        "mes_sel": f"{anio}-{mes:02d}",
+        "top_grafica": [{"producto": p["producto"], "ingreso": float(p["ingreso"]), "unidades": p["unidades"]} for p in top],
+        "corte": corte,
+        "hoy": referencia,
+    })

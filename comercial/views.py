@@ -4,9 +4,11 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from analitica.comercial import clasificar_clientes, seguimientos_pendientes
 from analitica.indicadores import TRAMOS_CARTERA, cartera_por_antiguedad, ventas_credito_con_saldo
 from core.actividad import registrar
 from core.permisos import requiere
@@ -16,8 +18,8 @@ from maestros.models import Producto
 
 from . import servicios
 from .forms import (AbonoForm, ConvertirForm, CotizacionForm, EstadoCotizacionForm, ItemFormSet,
-                    VentaForm, items_desde_formset)
-from .models import Cotizacion, Venta
+                    SeguimientoForm, VentaForm, items_desde_formset)
+from .models import Cotizacion, Seguimiento, Venta
 
 
 def _catalogo_json(empresa):
@@ -240,3 +242,42 @@ def cotizacion_imprimir(request, pk):
     return render(request, "comercial/cotizacion_imprimir.html", {
         "cotizacion": cotizacion, "items": cotizacion.items.select_related("producto"),
     })
+
+
+# --------------------------------------------------------------------------- seguimiento de clientes
+
+@requiere("clientes")
+def seguimientos(request):
+    hoy = timezone.localdate()
+    pendientes = seguimientos_pendientes(request.empresa, hoy, dias_adelante=30)
+    grupos = clasificar_clientes(request.empresa, hoy)
+    historial = Seguimiento.objects.filter(empresa=request.empresa).select_related("cliente", "usuario")
+    q = request.GET.get("q", "").strip()
+    if q:
+        historial = historial.filter(cliente__nombre__icontains=q)
+    return render(request, "comercial/seguimientos.html", {
+        "pendientes": pendientes, "grupos": grupos, "hoy": hoy, "q": q,
+        "por_recuperar": grupos["dejo"] + grupos["riesgo"],
+        "pagina": paginar(request, historial), "parametros": parametros_sin_pagina(request),
+        "pestana": request.GET.get("ver", "pendientes"),
+    })
+
+
+@requiere("clientes")
+def seguimiento_nuevo(request):
+    siguiente = request.GET.get("siguiente") or request.POST.get("siguiente") or ""
+    if not url_has_allowed_host_and_scheme(siguiente, allowed_hosts={request.get_host()}):
+        siguiente = ""
+    inicial = {}
+    if request.GET.get("cliente"):
+        inicial["cliente"] = request.GET["cliente"]
+    form = SeguimientoForm(request.POST or None, empresa=request.empresa, initial=inicial)
+    if request.method == "POST" and form.is_valid():
+        gestion = form.save(commit=False)
+        gestion.empresa = request.empresa
+        gestion.usuario = request.user
+        gestion.save()
+        registrar(request, "comercial", "Seguimiento registrado", f"{gestion.cliente.nombre}: {gestion.get_resultado_display()}")
+        messages.success(request, f"Gestión con {gestion.cliente.nombre} registrada.")
+        return redirect(siguiente or "comercial:seguimientos")
+    return render(request, "comercial/seguimiento_form.html", {"form": form, "siguiente": siguiente})

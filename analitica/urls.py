@@ -6,6 +6,7 @@ app_name = "analitica"
 
 urlpatterns = [
     path("tablero/", views.tablero, name="tablero"),
+    path("comercial/", views.tablero_comercial, name="comercial"),
     path("calidad-de-datos/", views.calidad, name="calidad"),
     path("exportar/", views.exportar, name="exportar"),
     path("exportar/<str:conjunto>/", views.exportar_archivo, name="exportar_archivo"),

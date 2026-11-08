@@ -140,6 +140,7 @@ def cliente_detalle(request, pk):
     return render(request, "maestros/cliente_detalle.html", {
         "cliente": cliente, "ventas": ventas,
         "saldo_total": sum((v.saldo for v in con_saldo), 0), "ventas_con_saldo": con_saldo,
+        "seguimientos": cliente.seguimientos.select_related("usuario")[:15],
     })
 
 

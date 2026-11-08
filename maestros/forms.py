@@ -35,6 +35,7 @@ class ProductoForm(FormularioEmpresa):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["categoria"].queryset = Categoria.objects.filter(empresa=self.empresa)
+        self.fields["categoria"].empty_label = "Sin categoría"
         if self.instance.pk:
             self.fields["costo_unitario"].help_text = (
                 "Se recalcula con cada entrada de inventario. Modifícalo solo para corregir un error de registro."

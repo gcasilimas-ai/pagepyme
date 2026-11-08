@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% load formato %}
-{% block titulo %}Tablero de control{% endblock %}
+{% block titulo %}Tablero general{% endblock %}
 {% block contenido %}
 <div class="encabezado">
   <div>
-    <h1>Tablero de control</h1>
+    <h1>Tablero general</h1>
     <p>Del {{ inicio|date:"j \d\e F"|lower }} al {{ fin|date:"j \d\e F \d\e Y"|lower }} ({{ dias }} días). Se compara con los {{ dias }} días anteriores.</p>
   </div>
   <form method="get" class="periodo" aria-label="Periodo de análisis">
@@ -36,6 +36,13 @@
 {% elif sin_ventas_periodo and ultima_venta %}
 <div class="aviso" style="margin-bottom:16px;">No hay ventas registradas en este periodo. La última venta es del {{ ultima_venta|date:"j \d\e F \d\e Y"|lower }}.</div>
 {% endif %}
+
+<section aria-label="Cifras del periodo" class="cifras cifras-4" style="margin-bottom:16px;">
+  <div class="cifra-tarjeta cifra-destacada"><span class="cifra-etiqueta">Ventas del periodo</span><div class="cifra">{{ base.ingresos|cop }}</div><div class="cifra-nota">{{ base.n_ventas }} ventas emitidas</div></div>
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">Costo de la mercancía vendida</span><div class="cifra">{{ base.costo|cop }}</div><div class="cifra-nota">Contribución {{ base.contribucion|cop }}</div></div>
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">Inventario a costo al cierre</span><div class="cifra">{{ base.inv_final|cop }}</div><div class="cifra-nota">{{ base.productos_quiebre }} de {{ base.productos_vigentes }} productos agotados</div></div>
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">Saldo de cartera al cierre</span><div class="cifra">{{ base.saldo_cartera|cop }}</div><div class="cifra-nota">Ventas a crédito del periodo {{ base.ventas_credito|cop }}</div></div>
+</section>
 
 <section aria-label="Indicadores de negocio" class="indicadores">
   {% for i in indicadores %}
@@ -148,15 +155,7 @@
   </div>
 </section>
 
-<section class="tarjeta separado">
-  <div class="tarjeta-titulo"><div><h2>Cifras base del periodo</h2><p>Valores con los que se calculan los indicadores. Se pueden descargar en Excel desde «Exportar».</p></div></div>
-  <div class="rejilla rejilla-4">
-    <div><div class="cifra">{{ base.ingresos|cop }}</div><div class="cifra-etiqueta">Ventas ({{ base.n_ventas }} documentos)</div></div>
-    <div><div class="cifra">{{ base.costo|cop }}</div><div class="cifra-etiqueta">Costo de la mercancía vendida</div></div>
-    <div><div class="cifra">{{ base.inv_final|cop }}</div><div class="cifra-etiqueta">Inventario a costo al cierre</div></div>
-    <div><div class="cifra">{{ base.saldo_cartera|cop }}</div><div class="cifra-etiqueta">Saldo de cartera al cierre</div></div>
-  </div>
-</section>
+
 
 {{ serie_semanal|json_script:"datos-semanal" }}
 {{ cartera|json_script:"datos-cartera" }}

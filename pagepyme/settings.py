@@ -116,11 +116,8 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "inicio"
 LOGOUT_REDIRECT_URL = "login"
 
-# Acceso de demostración: el comando `cargar_demo` crea estos usuarios sobre
-# una empresa con datos ficticios. La pantalla de ingreso los muestra solo si
-# MOSTRAR_ACCESO_DEMO está activo.
+# Contraseña de los usuarios de la empresa de demostración (comando `cargar_demo`).
 DEMO_CLAVE = os.environ.get("DEMO_CLAVE", "Demo-PagePyme-2026")
-MOSTRAR_ACCESO_DEMO = env_bool("MOSTRAR_ACCESO_DEMO", defecto=True)
 
 if not DEBUG:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

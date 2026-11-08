@@ -28,14 +28,14 @@ def num(valor, decimales=0):
 def cop(valor):
     if valor is None or valor == "":
         return "—"
-    return f"$ {_numero(valor, 0)}"
+    return f"$\u00a0{_numero(valor, 0)}"
 
 
 @register.filter
 def pct(valor, decimales=1):
     if valor is None or valor == "":
         return "—"
-    return f"{_numero(valor, int(decimales))} %"
+    return f"{_numero(valor, int(decimales))}\u00a0%"
 
 
 @register.filter
@@ -47,7 +47,7 @@ def valor_ind(valor, unidad):
     if unidad == "%":
         return pct(valor, 1)
     if unidad == "días":
-        return f"{_numero(valor, 0)} días"
+        return f"{_numero(valor, 0)}\u00a0días"
     if unidad == "veces/año":
         return f"{_numero(valor, 1)}"
     return _numero(valor, 1)
@@ -60,7 +60,7 @@ def variacion_ind(valor, unidad):
     signo = "+" if valor > 0 else ("−" if valor < 0 else "±")
     absoluto = abs(valor)
     if unidad == "COP":
-        return f"{signo}$ {_numero(absoluto, 0)}"
+        return f"{signo}$\u00a0{_numero(absoluto, 0)}"
     if unidad == "%":
         return f"{signo}{_numero(absoluto, 1)} pts"
     if unidad == "días":
@@ -89,4 +89,12 @@ def por(a, b):
     try:
         return a * b
     except TypeError:
+        return None
+
+
+@register.filter
+def dividir(a, b):
+    try:
+        return a / b if b else None
+    except (TypeError, ArithmeticError):
         return None

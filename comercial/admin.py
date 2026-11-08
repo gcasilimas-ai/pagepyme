@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Cotizacion, Pago, Venta
+from .models import Cotizacion, MetaComercial, Pago, Seguimiento, Venta
 
 
 class SoloLectura(admin.ModelAdmin):
@@ -28,3 +28,15 @@ class CotizacionAdmin(SoloLectura):
 @admin.register(Pago)
 class PagoAdmin(SoloLectura):
     list_display = ("venta", "fecha", "valor", "medio")
+
+
+@admin.register(MetaComercial)
+class MetaComercialAdmin(admin.ModelAdmin):
+    list_display = ("empresa", "anio", "mes", "valor")
+    list_filter = ("empresa", "anio")
+
+
+@admin.register(Seguimiento)
+class SeguimientoAdmin(admin.ModelAdmin):
+    list_display = ("fecha", "empresa", "cliente", "canal", "resultado", "proxima_fecha", "usuario")
+    list_filter = ("empresa", "resultado", "canal")

@@ -3,40 +3,87 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ingresar · PAGE-PYME</title>
+  <title>Iniciar sesión · PAGE·PYME</title>
   <link rel="stylesheet" href="{% static 'css/app.css' %}">
   <link rel="icon" href="{% static 'img/icono.svg' %}" type="image/svg+xml">
 </head>
 <body>
 <div class="ingreso">
-  <section class="ingreso-lado">
+  <section class="ingreso-lado" aria-label="Presentación de PAGE·PYME">
+    <span class="logo">{% include "core/_logo.html" %}</span>
+
     <div>
-      <div class="marca" style="padding:0;"><span class="marca-sello" aria-hidden="true">PP</span><span class="marca-texto">PAGE-PYME</span></div>
-      <h1>Ventas, inventario y cartera en un solo lugar.</h1>
-      <p>Plataforma de gestión para pymes comercializadoras de elementos de protección personal. Cada venta, compra y abono que se registra alimenta un tablero de control con seis indicadores de negocio.</p>
+      <h1 class="ingreso-titulo">Ventas, inventario y cartera con indicadores para decidir a tiempo.</h1>
+      <p class="ingreso-texto">Cada venta, compra y abono que registra tu equipo alimenta tableros de control con metas, alertas y acciones sugeridas.</p>
+      <ul class="ingreso-funciones">
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg>
+          <div><strong>Seguimiento comercial</strong><span>Avance de la meta del mes, productos más vendidos y clientes por recuperar.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg>
+          <div><strong>Inventario y cartera bajo control</strong><span>Alertas de stock, costo promedio y cartera por antigüedad.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <div><strong>Información protegida</strong><span>Cada usuario ve solo los datos de su empresa, según su rol.</span></div>
+        </li>
+      </ul>
     </div>
-    <p class="tenue" style="font-size:.82rem; color:#8d97a6;">Proyecto de grado · Maestría en Analítica de Datos · Universidad Central</p>
+
+    <div class="vista-previa" aria-hidden="true">
+      <div class="vp-fila">
+        <div class="vp-tarjeta"><small>Ventas del mes</small><b>87 %</b></div>
+        <div class="vp-tarjeta"><small>Margen</small><b>32,4 %</b></div>
+        <div class="vp-tarjeta"><small>Cartera al día</small><b>91 %</b></div>
+      </div>
+      <div class="vp-barras"><span style="height:38%"></span><span style="height:52%"></span><span style="height:46%"></span><span style="height:64%"></span><span style="height:58%"></span><span style="height:76%"></span><span style="height:70%"></span><span style="height:88%"></span></div>
+    </div>
+
+    <p class="ingreso-pie">© {% now "Y" %} PAGE·PYME</p>
   </section>
+
   <section class="ingreso-form">
-    <div class="tarjeta">
-      <h2 style="margin-bottom:14px;">Ingresar</h2>
-      {% if form.errors %}<div class="errores-formulario">Usuario o contraseña incorrectos.</div>{% endif %}
+    <div class="ingreso-caja">
+      <span class="logo logo-oscuro">{% include "core/_logo.html" %}</span>
+      <h2>Iniciar sesión</h2>
+      <p>Ingresa con el usuario que te asignó el administrador de tu empresa.</p>
+      {% if form.errors %}<div class="errores-formulario" role="alert">El usuario o la contraseña no son correctos. Revisa e intenta de nuevo.</div>{% endif %}
       <form method="post" novalidate>
         {% csrf_token %}
-        <div class="campo"><label for="id_username">Usuario</label><input type="text" name="username" id="id_username" autocomplete="username" autofocus required value="{{ form.username.value|default:'' }}"></div>
-        <div class="campo separado"><label for="id_password">Contraseña</label><input type="password" name="password" id="id_password" autocomplete="current-password" required></div>
+        <div class="campo">
+          <label for="id_username">Usuario</label>
+          <input type="text" name="username" id="id_username" autocomplete="username" autocapitalize="none" autofocus required value="{{ form.username.value|default:'' }}">
+        </div>
+        <div class="campo">
+          <label for="id_password">Contraseña</label>
+          <div class="clave-envoltura">
+            <input type="password" name="password" id="id_password" autocomplete="current-password" required>
+            <button type="button" data-ver-clave aria-controls="id_password" aria-pressed="false">Mostrar</button>
+          </div>
+        </div>
         <input type="hidden" name="next" value="{{ next }}">
-        <div class="botonera"><button class="btn btn-primario" type="submit" style="width:100%; justify-content:center;">Ingresar</button></div>
+        <div class="botonera"><button class="btn btn-primario btn-bloque" type="submit">Ingresar</button></div>
       </form>
-      {% if acceso_demo %}
-      <div class="demo aviso-neutro">
-        <p style="margin-bottom:6px;"><strong>Acceso de demostración</strong> a «{{ acceso_demo.empresa }}». Los datos son ficticios.</p>
-        <p style="margin-bottom:4px;">Usuarios: {% for u, rol in acceso_demo.usuarios %}<code>{{ u }}</code> ({{ rol|lower }}){% if not forloop.last %}, {% endif %}{% endfor %}</p>
-        <p style="margin:0;">Contraseña: <code>{{ acceso_demo.clave }}</code></p>
+      <p class="ingreso-ayuda">¿Olvidaste tu contraseña? Pídele al administrador de tu empresa que la restablezca.</p>
+      <div class="ingreso-seguro">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        Conexión cifrada · Sesión individual por usuario
       </div>
-      {% endif %}
     </div>
   </section>
 </div>
+<script>
+  (function () {
+    var boton = document.querySelector("[data-ver-clave]");
+    var campo = document.getElementById("id_password");
+    boton.addEventListener("click", function () {
+      var visible = campo.type === "text";
+      campo.type = visible ? "password" : "text";
+      boton.textContent = visible ? "Mostrar" : "Ocultar";
+      boton.setAttribute("aria-pressed", visible ? "false" : "true");
+    });
+  })();
+</script>
 </body>
 </html>

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Seguimiento de clientes{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Seguimiento de clientes</h1><p>Contactos programados, clientes que dejaron de comprar e historial de gestiones comerciales.</p></div>
+  <a class="btn btn-primario" href="{% url 'comercial:seguimiento_nuevo' %}?siguiente={{ request.get_full_path|urlencode }}">Registrar gestión</a>
+</div>
+
+<div class="cifras cifras-4">
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">Contactos para los próximos 30 días</span><div class="cifra">{{ pendientes|length }}</div></div>
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">Dejaron de comprar</span><div class="cifra">{{ grupos.dejo|length }}</div><div class="cifra-nota">Superaron el doble de su frecuencia de compra</div></div>
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">En riesgo</span><div class="cifra">{{ grupos.riesgo|length }}</div><div class="cifra-nota">Se están demorando más de lo habitual</div></div>
+  <div class="cifra-tarjeta"><span class="cifra-etiqueta">Compraron una vez y no volvieron</span><div class="cifra">{{ grupos.no_volvio|length }}</div><div class="cifra-nota">Más de 60 días sin una segunda compra</div></div>
+</div>
+
+<section class="tarjeta separado" data-pestanas>
+  <div class="pestanas" role="tablist">
+    <button class="pestana" role="tab" type="button" data-pestana="pendientes" aria-selected="{% if pestana == 'pendientes' %}true{% else %}false{% endif %}">Contactos programados <span class="conteo">{{ pendientes|length }}</span></button>
+    <button class="pestana" role="tab" type="button" data-pestana="recuperar" aria-selected="{% if pestana == 'recuperar' %}true{% else %}false{% endif %}">Clientes por recuperar <span class="conteo">{{ por_recuperar|length }}</span></button>
+    <button class="pestana" role="tab" type="button" data-pestana="historial" aria-selected="{% if pestana == 'historial' %}true{% else %}false{% endif %}">Historial de gestiones</button>
+  </div>
+
+  <div data-panel="pendientes" {% if pestana != 'pendientes' %}hidden{% endif %}>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Fecha programada</th><th>Cliente</th><th>Próxima acción</th><th>Última gestión</th><th></th></tr></thead>
+      <tbody>
+      {% for s in pendientes %}
+        <tr><td>{{ s.proxima_fecha|date:"j M Y" }}<br>{% if s.atraso > 0 %}<span class="estado estado-critico">{{ s.atraso }} día{{ s.atraso|pluralize }} de atraso</span>{% elif s.atraso == 0 %}<span class="estado estado-riesgo">Hoy</span>{% else %}<span class="estado estado-info">En {{ s.faltan }} día{{ s.faltan|pluralize }}</span>{% endif %}</td>
+          <td><a href="{% url 'maestros:cliente' s.cliente.pk %}">{{ s.cliente.nombre }}</a><span class="subtexto">{{ s.cliente.telefono|default:"Sin teléfono" }}</span></td>
+          <td>{{ s.proxima_accion }}</td>
+          <td>{{ s.get_resultado_display }}<span class="subtexto">{{ s.fecha|date:"j M" }} · {{ s.get_canal_display }}{% if s.usuario %} · {{ s.usuario.username }}{% endif %}</span></td>
+          <td class="num"><a class="btn btn-pequeno" href="{% url 'comercial:seguimiento_nuevo' %}?cliente={{ s.cliente.pk }}&siguiente={{ request.get_full_path|urlencode }}">Registrar gestión</a></td></tr>
+      {% empty %}<tr><td colspan="5" class="vacio">No hay contactos programados. Al registrar una gestión con fecha de próximo contacto, aparecerá aquí.</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div data-panel="recuperar" {% if pestana != 'recuperar' %}hidden{% endif %}>
+    <p class="tenue" style="font-size:.86rem;">Clientes que compraban con frecuencia y llevan más tiempo del habitual sin hacerlo, ordenados por valor histórico.</p>
+    {% include "comercial/_tabla_clientes_inactivos.html" with filas=por_recuperar %}
+  </div>
+
+  <div data-panel="historial" {% if pestana != 'historial' %}hidden{% endif %}>
+    <form method="get" class="filtros"><input type="hidden" name="ver" value="historial">
+      <div class="campo campo-ancho"><label for="q">Cliente</label><input type="search" id="q" name="q" value="{{ q }}"></div>
+      <button class="btn" type="submit">Buscar</button></form>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Fecha</th><th>Cliente</th><th>Canal</th><th>Resultado</th><th>Detalle</th><th>Próximo paso</th><th>Usuario</th></tr></thead>
+      <tbody>{% for s in pagina %}<tr><td>{{ s.fecha|date:"j M Y" }}</td><td><a href="{% url 'maestros:cliente' s.cliente.pk %}">{{ s.cliente.nombre }}</a></td><td>{{ s.get_canal_display }}</td><td>{{ s.get_resultado_display }}</td><td style="max-width:280px;">{{ s.nota|default:"—"|truncatechars:120 }}</td><td>{% if s.proxima_fecha %}{{ s.proxima_fecha|date:"j M" }} · {{ s.proxima_accion }}{% else %}—{% endif %}</td><td>{{ s.usuario.username|default:"—" }}</td></tr>{% empty %}<tr><td colspan="7" class="vacio">Aún no hay gestiones registradas.</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% include "core/_paginacion.html" %}
+  </div>
+</section>
+{% endblock %}

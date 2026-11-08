@@ -64,3 +64,22 @@ class SUSForm(forms.ModelForm):
             campo.label = f"{i}. {pregunta}"
             campo.widget = forms.RadioSelect(choices=ESCALA)
             campo.required = True
+
+
+MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto",
+         "Septiembre", "Octubre", "Noviembre", "Diciembre"]
+
+
+class MetasComercialesForm(forms.Form):
+    """Meta de ventas para cada mes de un año. Un mes vacío queda sin meta."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for i, nombre in enumerate(MESES, start=1):
+            self.fields[f"mes_{i}"] = forms.DecimalField(
+                label=nombre, required=False, min_value=1, max_digits=16, decimal_places=0,
+                widget=forms.NumberInput(attrs={"step": "1", "inputmode": "numeric", "placeholder": "Sin meta"}),
+            )
+
+    def valores(self):
+        return {i: self.cleaned_data.get(f"mes_{i}") for i in range(1, 13)}

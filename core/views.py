@@ -1,4 +1,5 @@
-from collections import Counter, OrderedDict
+from collections import Counter, OrderedDict, defaultdict
+from decimal import Decimal
 from datetime import timedelta
 from statistics import mean
 
@@ -7,17 +8,19 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView
 from django.core.exceptions import PermissionDenied
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from analitica import indicadores as ind
-from comercial.models import Venta
+from analitica.models import FactVenta
+from comercial.models import MetaComercial, Venta
 from maestros.models import Cliente, Producto
 
 from .actividad import registrar
-from .forms import EmpresaForm, MetasForm, NuevoUsuarioForm, SUSForm
+from .forms import MESES, EmpresaForm, MetasComercialesForm, MetasForm, NuevoUsuarioForm, SUSForm
 from .models import Empresa, Perfil, RegistroActividad, RespuestaSUS
 from .permisos import puede, requiere
 
@@ -26,24 +29,13 @@ class Ingreso(LoginView):
     template_name = "registration/login.html"
     redirect_authenticated_user = True
 
-    def get_context_data(self, **kwargs):
-        from django.conf import settings
-
-        contexto = super().get_context_data(**kwargs)
-        demo = Empresa.objects.filter(es_demo=True).first()
-        if settings.MOSTRAR_ACCESO_DEMO and demo:
-            contexto["acceso_demo"] = {
-                "empresa": demo.nombre,
-                "usuarios": [("demo.gerente", "Gerente"), ("demo.comercial", "Comercial"), ("demo.bodega", "Bodega")],
-                "clave": settings.DEMO_CLAVE,
-            }
-        return contexto
-
 
 @login_required
 def inicio(request):
     if request.empresa is None:
         return redirect("sin_empresa")
+    if request.rol == Perfil.COMERCIAL and not request.user.is_staff:
+        return redirect("analitica:comercial")
     if puede(request, "tablero"):
         return redirect("analitica:tablero")
     return redirect("inventario:alertas")
@@ -69,17 +61,56 @@ def cambiar_empresa(request):
 
 @requiere("configuracion")
 def metas(request):
-    form = MetasForm(request.POST or None, instance=request.empresa)
-    if request.method == "POST" and form.is_valid():
-        form.save()
-        registrar(request, "configuracion", "Metas actualizadas")
-        messages.success(request, "Metas actualizadas. El tablero ya las usa para calcular el cumplimiento.")
-        return redirect("analitica:tablero")
-    return render(request, "core/formulario.html", {
-        "form": form, "titulo": "Metas de los indicadores", "volver": "analitica:tablero",
-        "ayuda": ("Cada empresa define sus propias metas. Las metas de margen por línea de producto se "
-                  "configuran en cada categoría."),
-        "enlace_extra": ("maestros:categorias", "Metas de margen por categoría"),
+    empresa = request.empresa
+    hoy = timezone.localdate()
+    try:
+        anio = int(request.POST.get("anio") or request.GET.get("anio") or hoy.year)
+    except ValueError:
+        anio = hoy.year
+    seccion = request.POST.get("seccion") if request.method == "POST" else None
+
+    existentes = {m.mes: m.valor for m in MetaComercial.objects.filter(empresa=empresa, anio=anio)}
+    form_comercial = MetasComercialesForm(
+        request.POST if seccion == "comercial" else None,
+        initial={f"mes_{mes}": valor for mes, valor in existentes.items()},
+    )
+    form_indicadores = MetasForm(request.POST if seccion == "indicadores" else None, instance=empresa)
+
+    if seccion == "comercial" and form_comercial.is_valid():
+        for mes, valor in form_comercial.valores().items():
+            if valor:
+                MetaComercial.objects.update_or_create(empresa=empresa, anio=anio, mes=mes, defaults={"valor": valor})
+            else:
+                MetaComercial.objects.filter(empresa=empresa, anio=anio, mes=mes).delete()
+        registrar(request, "configuracion", "Metas comerciales actualizadas", str(anio))
+        messages.success(request, f"Metas de ventas de {anio} guardadas. El tablero comercial ya las usa.")
+        return redirect(f"{reverse('metas')}?anio={anio}")
+    if seccion == "indicadores" and form_indicadores.is_valid():
+        form_indicadores.save()
+        registrar(request, "configuracion", "Metas de indicadores actualizadas")
+        messages.success(request, "Metas de los indicadores actualizadas.")
+        return redirect(f"{reverse('metas')}?anio={anio}")
+
+    ventas = defaultdict(Decimal)
+    for fila in FactVenta.objects.filter(empresa=empresa, fecha__anio__in=[anio - 1, anio]) \
+            .values("fecha__anio", "fecha__mes").annotate(t=Sum("ingreso")):
+        ventas[(fila["fecha__anio"], fila["fecha__mes"])] = fila["t"] or Decimal("0")
+    meses = []
+    for i, nombre in enumerate(MESES, start=1):
+        meses.append({
+            "campo": form_comercial[f"mes_{i}"],
+            "anterior": ventas.get((anio - 1, i)),
+            "real": ventas.get((anio, i)),
+            "meta": existentes.get(i),
+        })
+    return render(request, "core/metas.html", {
+        "anio": anio,
+        "anios": [hoy.year - 1, hoy.year, hoy.year + 1],
+        "form_comercial": form_comercial,
+        "form_indicadores": form_indicadores,
+        "meses": meses,
+        "total_anual": sum(existentes.values(), Decimal("0")),
+        "meses_con_meta": len(existentes),
     })
 
 

@@ -18,8 +18,6 @@ services:
         generateValue: true
       - key: DEBUG
         value: "False"
-      - key: MOSTRAR_ACCESO_DEMO
-        value: "True"
       - key: DEMO_CLAVE
         value: Demo-PagePyme-2026
       - key: DJANGO_SUPERUSER_USERNAME

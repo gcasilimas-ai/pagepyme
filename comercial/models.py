@@ -158,3 +158,61 @@ class Pago(models.Model):
 
     def __str__(self):
         return f"Abono {self.valor} a {self.venta}"
+
+
+class MetaComercial(models.Model):
+    """Meta de ventas de la empresa para un mes (en pesos, antes de impuestos)."""
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="metas_comerciales")
+    anio = models.PositiveSmallIntegerField("Año")
+    mes = models.PositiveSmallIntegerField(validators=[MinValueValidator(1)])
+    valor = models.DecimalField("Meta de ventas (COP)", max_digits=16, decimal_places=0,
+                                validators=[MinValueValidator(Decimal("1"))])
+    actualizada = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["anio", "mes"]
+        constraints = [models.UniqueConstraint(fields=["empresa", "anio", "mes"], name="meta_comercial_unica")]
+        verbose_name = "meta comercial"
+        verbose_name_plural = "metas comerciales"
+
+    def __str__(self):
+        return f"{self.empresa} {self.anio}-{self.mes:02d}: {self.valor}"
+
+
+class Seguimiento(models.Model):
+    """Gestión comercial con un cliente (llamada, visita, mensaje) y su próximo paso."""
+
+    CANALES = [
+        ("llamada", "Llamada"),
+        ("whatsapp", "WhatsApp"),
+        ("visita", "Visita"),
+        ("correo", "Correo electrónico"),
+    ]
+    RESULTADOS = [
+        ("interesado", "Interesado en comprar"),
+        ("cotizacion", "Pidió cotización"),
+        ("compra", "Confirmó pedido"),
+        ("sin_respuesta", "No respondió"),
+        ("no_interesado", "No está interesado por ahora"),
+        ("reclamo", "Tiene un reclamo o inconformidad"),
+        ("otro", "Otro"),
+    ]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="seguimientos")
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="seguimientos")
+    fecha = models.DateField("Fecha de la gestión", default=timezone.localdate, db_index=True)
+    canal = models.CharField(max_length=20, choices=CANALES, default="llamada")
+    resultado = models.CharField(max_length=20, choices=RESULTADOS)
+    nota = models.TextField("Detalle", blank=True)
+    proxima_fecha = models.DateField("Próximo contacto", null=True, blank=True)
+    proxima_accion = models.CharField("Próxima acción", max_length=150, blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+        verbose_name = "seguimiento"
+
+    def __str__(self):
+        return f"{self.cliente} · {self.get_canal_display()} · {self.fecha}"

@@ -14,13 +14,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from comercial import servicios as com
-from comercial.models import Cotizacion, ItemCotizacion, ItemVenta, Pago, Venta
+from comercial.models import Cotizacion, ItemCotizacion, ItemVenta, MetaComercial, Pago, Seguimiento, Venta
 from core.models import Empresa, Perfil, RegistroActividad, RespuestaSUS
 from inventario.models import MovimientoInventario
-from inventario.servicios import registrar_movimiento
+from inventario.servicios import StockInsuficiente, registrar_movimiento
 from maestros.models import Categoria, Cliente, LoteImportacion, Producto
 
 NOMBRE_DEMO = "Distribuidora Demo EPP (datos ficticios)"
@@ -109,6 +110,11 @@ CLIENTES = [
     ("Clientes de mostrador", "222222222", 0, 6, "contado"),
 ]
 
+# Clientes frecuentes que dejan de comprar N días antes de la fecha de generación
+CLIENTES_QUE_DEJAN = {"900000104": 75, "900000107": 58, "900000118": 85, "900000111": 50}
+# Clientes nuevos: empiezan a comprar N días antes de la fecha de generación
+CLIENTES_NUEVOS = {"900000121": 38, "900000122": 20}
+
 CIUDADES = ["Neiva", "Neiva", "Neiva", "Pitalito", "Garzón", "La Plata", "Campoalegre", "Rivera", "Aipe", "Palermo"]
 SEMANAS = 22
 
@@ -122,7 +128,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opciones):
         existente = Empresa.objects.filter(es_demo=True, nombre=NOMBRE_DEMO).first()
-        if existente and opciones["si_no_existe"]:
+        actualizada = existente and MetaComercial.objects.filter(empresa=existente).exists()
+        if actualizada and opciones["si_no_existe"]:
             self.stdout.write("La empresa de demostración ya existe; no se modifica.")
             return
         with transaction.atomic():
@@ -138,7 +145,8 @@ class Command(BaseCommand):
         Venta.objects.filter(empresa=empresa).delete()
         ItemCotizacion.objects.filter(cotizacion__empresa=empresa).delete()
         Cotizacion.objects.filter(empresa=empresa).delete()
-        for modelo in (Producto, Categoria, Cliente, LoteImportacion, RegistroActividad, RespuestaSUS):
+        for modelo in (Seguimiento, MetaComercial, Producto, Categoria, Cliente, LoteImportacion,
+                       RegistroActividad, RespuestaSUS):
             modelo.objects.filter(empresa=empresa).delete()
         empresa.delete()
 
@@ -206,9 +214,17 @@ class Command(BaseCommand):
                         registrar_movimiento(empresa, p, MovimientoInventario.ENTRADA, cantidad, costo_unitario=costo,
                                              fecha=dia, usuario=usuarios["bodega"], observacion="Compra a proveedor")
             if dia_semana < 6:
+                pesos_dia = [
+                    0 if (CLIENTES_QUE_DEJAN.get(c.documento) and dia >= hoy - timedelta(days=CLIENTES_QUE_DEJAN[c.documento]))
+                    or (CLIENTES_NUEVOS.get(c.documento) and dia < hoy - timedelta(days=CLIENTES_NUEVOS[c.documento]))
+                    else (w * 3 if CLIENTES_NUEVOS.get(c.documento) else w)
+                    for c, w in zip(clientes, pesos_clientes)
+                ]
                 n_ventas = rnd.choice([1, 2, 2, 3, 3, 4]) if dia_semana < 5 else rnd.choice([0, 1, 1])
                 for _ in range(n_ventas):
-                    self._venta(empresa, rnd, dia, clientes, pesos_clientes, lista_productos, pesos_productos, usuarios)
+                    self._venta(empresa, rnd, dia, clientes, pesos_dia, lista_productos, pesos_productos, usuarios)
+                if dia_semana < 5 and rnd.random() < 0.3:
+                    self._cotizacion(empresa, rnd, dia, hoy, clientes, pesos_dia, lista_productos, usuarios)
             if dia_semana == 3 and rnd.random() < 0.35:
                 p = rnd.choice(lista_productos)
                 p.refresh_from_db(fields=["stock_actual"])
@@ -218,7 +234,8 @@ class Command(BaseCommand):
             dia += timedelta(days=1)
 
         self._pagos(rnd, empresa, hoy, gerente)
-        self._cotizaciones(rnd, empresa, inicio, hoy, clientes, lista_productos, usuarios)
+        self._metas(rnd, empresa, inicio, hoy)
+        self._seguimientos(empresa, hoy, usuarios["comercial"])
         return empresa
 
     def _usuarios(self, empresa):
@@ -288,17 +305,66 @@ class Command(BaseCommand):
                 com.registrar_abono(venta, saldo, fecha=fecha_pago, medio=rnd.choice(["transferencia", "consignacion"]),
                                     referencia="Pago cartera", usuario=usuario)
 
-    def _cotizaciones(self, rnd, empresa, inicio, hoy, clientes, productos, usuarios):
-        for _ in range(16):
-            fecha = inicio + timedelta(days=rnd.randint(0, (hoy - inicio).days))
-            cliente = rnd.choice([c for c in clientes if c.documento != "222222222"])
-            items = [(p, rnd.randint(2, 20), p.precio_venta) for p in rnd.sample(productos, rnd.randint(2, 5))]
-            cot = com.crear_cotizacion(empresa, cliente, items, fecha=fecha, usuario=usuarios["comercial"])
-            destino = rnd.random()
-            if destino < 0.35:
-                cot.estado = Cotizacion.ENVIADA
-            elif destino < 0.55:
-                cot.estado = Cotizacion.RECHAZADA
-            elif destino < 0.75:
-                cot.estado = Cotizacion.ACEPTADA
-            cot.save(update_fields=["estado"])
+    def _cotizacion(self, empresa, rnd, dia, hoy, clientes, pesos_clientes, productos, usuarios):
+        candidatos = [(c, w) for c, w in zip(clientes, pesos_clientes) if w and c.documento != "222222222"]
+        cliente = rnd.choices([c for c, _ in candidatos], weights=[w for _, w in candidatos])[0]
+        items = []
+        for p in rnd.sample(productos, rnd.randint(2, 4)):
+            p.refresh_from_db(fields=["stock_actual"])
+            tope = 10 if p.costo_unitario < 80000 else 2
+            items.append((p, max(1, min(rnd.randint(2, tope), p.stock_actual // 3 or 1)), p.precio_venta))
+        cot = com.crear_cotizacion(empresa, cliente, items, fecha=dia, usuario=usuarios["comercial"])
+        destino = rnd.random()
+        reciente = (hoy - dia).days <= 21
+        if destino < 0.55 and not reciente:
+            try:
+                com.convertir_cotizacion(cot, Venta.CREDITO if cliente.plazo_credito_dias else Venta.CONTADO,
+                                         usuario=usuarios["comercial"], fecha=dia)
+                return
+            except StockInsuficiente:
+                pass
+        if destino < 0.72 and not reciente:
+            cot.estado = Cotizacion.RECHAZADA
+        else:
+            cot.estado = rnd.choice([Cotizacion.ENVIADA, Cotizacion.ENVIADA, Cotizacion.ACEPTADA])
+        cot.save(update_fields=["estado"])
+
+    def _metas(self, rnd, empresa, inicio, hoy):
+        """Metas mensuales alrededor del promedio de los meses completos simulados."""
+        mensual = {}
+        for fila in Venta.objects.filter(empresa=empresa, estado=Venta.EMITIDA) \
+                .values("fecha__year", "fecha__month").annotate(t=Sum("total")):
+            mensual[(fila["fecha__year"], fila["fecha__month"])] = fila["t"]
+        completos = [v for (a, m), v in mensual.items()
+                     if (a, m) != (inicio.year, inicio.month) and (a, m) != (hoy.year, hoy.month)]
+        base = sum(completos) / len(completos) if completos else Decimal("20000000")
+        a, m = inicio.year, inicio.month
+        while (a, m) <= (hoy.year, 12):
+            factor = Decimal(str(rnd.choice([0.97, 1.02, 1.05, 1.08, 1.12])))
+            MetaComercial.objects.create(empresa=empresa, anio=a, mes=m,
+                                         valor=(base * factor / 100000).quantize(Decimal("1")) * 100000)
+            m += 1
+            if m > 12:
+                a, m = a + 1, 1
+
+    def _seguimientos(self, empresa, hoy, usuario):
+        def cliente(documento):
+            return Cliente.objects.get(empresa=empresa, documento=documento)
+
+        registros = [
+            ("900000104", 20, "llamada", "sin_respuesta", "Se llamó al jefe de compras; no contestó.",
+             -6, "Volver a llamar al jefe de compras"),
+            ("900000118", 10, "whatsapp", "interesado",
+             "Pidió precios de arneses y eslingas para una obra nueva en Garzón.", 2,
+             "Enviar cotización de equipos para trabajo en alturas"),
+            ("900000101", 5, "visita", "compra", "Confirmó el pedido de dotación del trimestre.", 12,
+             "Confirmar fecha de entrega"),
+            ("900000102", 3, "llamada", "otro", "Se acordó un plan de pago para las facturas vencidas.", 0,
+             "Confirmar la consignación acordada"),
+        ]
+        for documento, hace, canal, resultado, nota, proxima, accion in registros:
+            Seguimiento.objects.create(
+                empresa=empresa, cliente=cliente(documento), fecha=hoy - timedelta(days=hace), canal=canal,
+                resultado=resultado, nota=nota, proxima_fecha=hoy + timedelta(days=proxima),
+                proxima_accion=accion, usuario=usuario,
+            )

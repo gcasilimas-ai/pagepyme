@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Metas{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><h1>Metas</h1><p>Las metas que defina la empresa son el punto de comparación de los tableros comercial y general.</p></div>
+</div>
+
+<section class="tarjeta">
+  <div class="tarjeta-titulo">
+    <div><h2>Meta de ventas por mes</h2><p>Valor en pesos que la empresa espera facturar cada mes. El tablero comercial muestra el avance diario frente a esta meta.</p></div>
+    <form method="get" class="periodo">
+      <label class="tenue" for="anio" style="font-size:.85rem;">Año</label>
+      <select id="anio" name="anio" data-autoenviar>{% for a in anios %}<option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+    </form>
+  </div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="seccion" value="comercial">
+    <input type="hidden" name="anio" value="{{ anio }}">
+    {% if form_comercial.errors %}<div class="errores-formulario">Revisa los valores marcados: deben ser números enteros positivos.</div>{% endif %}
+    <div class="filtros" style="margin-bottom:16px;">
+      <div class="campo"><label for="valor-todos">Aplicar un mismo valor a todos los meses</label><input type="number" id="valor-todos" min="1" step="1" inputmode="numeric" placeholder="Ej. 25000000"></div>
+      <button class="btn" type="button" data-aplicar-todos>Aplicar</button>
+    </div>
+    <div class="meses">
+      {% for m in meses %}
+      <div class="campo{% if m.campo.errors %} con-error{% endif %}">
+        <label for="{{ m.campo.id_for_label }}">{{ m.campo.label }} <span class="vista-valor" data-vista aria-hidden="true"></span></label>
+        {{ m.campo }}
+        <p class="ayuda-campo">
+          {% if m.real %}Vendido: {{ m.real|cop }}{% if m.meta %} · {{ m.real|por:100|dividir:m.meta|num }} %{% endif %}{% elif m.anterior %}Mismo mes {{ anio|add:"-1" }}: {{ m.anterior|cop }}{% else %}&nbsp;{% endif %}
+        </p>
+        {% for e in m.campo.errors %}<p class="error-campo">{{ e }}</p>{% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="botonera" style="align-items:center;">
+      <button class="btn btn-primario" type="submit">Guardar metas de {{ anio }}</button>
+      <span class="tenue" data-total-anual>{% if meses_con_meta %}Meta anual: <strong>{{ total_anual|cop }}</strong> ({{ meses_con_meta }} mes{{ meses_con_meta|pluralize:"es" }} con meta){% else %}Aún no hay metas para {{ anio }}.{% endif %}</span>
+    </div>
+  </form>
+</section>
+
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo">
+    <div><h2>Metas de los indicadores</h2><p>Se usan en el tablero general para calcular el cumplimiento y el estado de cada indicador.</p></div>
+    <a class="btn btn-pequeno" href="{% url 'maestros:categorias' %}">Metas de margen por categoría</a>
+  </div>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="seccion" value="indicadores">
+    <input type="hidden" name="anio" value="{{ anio }}">
+    <div class="campos" style="grid-template-columns: repeat(3, minmax(0,1fr));">{% for field in form_indicadores %}{% include "core/_campo.html" %}{% endfor %}</div>
+    <div class="botonera"><button class="btn btn-primario" type="submit">Guardar metas de indicadores</button></div>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var campos = Array.prototype.slice.call(document.querySelectorAll(".meses input[type=number]"));
+    var total = document.querySelector("[data-total-anual]");
+    function pesos(n) { return "$\u00a0" + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+    function valor(campo) { var n = parseInt(campo.value, 10); return isNaN(n) || n <= 0 ? 0 : n; }
+    function actualizar() {
+      var suma = 0, meses = 0;
+      campos.forEach(function (campo) {
+        var n = valor(campo);
+        var vista = campo.closest(".campo").querySelector("[data-vista]");
+        if (vista) { vista.textContent = n ? pesos(n) : ""; }
+        if (n) { suma += n; meses += 1; }
+      });
+      if (total) {
+        total.innerHTML = meses
+          ? "Meta anual: <strong>" + pesos(suma) + "</strong> (" + meses + (meses === 1 ? " mes" : " meses") + " con meta)"
+          : "Aún no hay metas para {{ anio }}.";
+      }
+    }
+    campos.forEach(function (campo) { campo.addEventListener("input", actualizar); });
+    document.querySelector("[data-aplicar-todos]").addEventListener("click", function () {
+      var v = document.getElementById("valor-todos").value;
+      if (!v) { return; }
+      campos.forEach(function (campo) { campo.value = v; });
+      actualizar();
+    });
+    actualizar();
+  })();
+</script>
+{% endblock %}

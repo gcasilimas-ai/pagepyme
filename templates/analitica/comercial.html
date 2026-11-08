@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load formato %}
+{% block titulo %}Tablero comercial{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div>
+    <h1>Tablero comercial</h1>
+    <p>{{ avance.nombre_mes|capfirst }}{% if not avance.cerrado %} · datos al {{ corte|date:"j \d\e F"|lower }} · {{ avance.habiles_transcurridos }} de {{ avance.habiles_total }} días hábiles{% else %} · mes cerrado{% endif %}</p>
+  </div>
+  <div class="acciones">
+    <form method="get" class="periodo">
+      <label class="tenue" for="mes" style="font-size:.85rem;">Mes</label>
+      <select id="mes" name="mes" data-autoenviar>{% for o in opciones_mes %}<option value="{{ o.valor }}" {% if o.valor == mes_sel %}selected{% endif %}>{{ o.nombre }}</option>{% endfor %}</select>
+    </form>
+    <a class="btn" href="{% url 'comercial:seguimiento_nuevo' %}?siguiente={{ request.get_full_path|urlencode }}">Registrar gestión</a>
+    {% if permisos.configuracion %}<a class="btn" href="{% url 'metas' %}?anio={{ avance.anio }}">Metas de ventas</a>{% endif %}
+  </div>
+</div>
+
+<section aria-label="Cifras del mes" class="cifras">
+  <div class="cifra-tarjeta cifra-destacada">
+    <span class="cifra-etiqueta">Ventas de {{ avance.nombre_mes }}</span>
+    <div class="cifra">{{ avance.ventas|cop }}</div>
+    {% if avance.meta %}
+      <div class="progreso" role="img" aria-label="Avance {{ avance.cumplimiento|num }} % de la meta; lo esperado a la fecha es {{ avance.esperado_pct|num }} %"><span style="width:{{ avance.avance_pct|stringformat:'.1f' }}%"></span>{% if not avance.cerrado %}<i style="left:{{ avance.esperado_pct|stringformat:'.1f' }}%"></i>{% endif %}</div>
+      <div class="cifra-nota">{{ avance.cumplimiento|num }} % de la meta de {{ avance.meta|cop }}{% if not avance.cerrado %} · la línea marca lo esperado a hoy{% endif %}</div>
+    {% else %}
+      <div class="cifra-nota">Sin meta para este mes{% if permisos.configuracion %} · <a href="{% url 'metas' %}?anio={{ avance.anio }}" style="color:#9cc0ff;">definirla</a>{% endif %}</div>
+    {% endif %}
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">{% if avance.cerrado %}Cierre del mes{% else %}Proyección al cierre{% endif %}</span>
+    <div class="cifra">{{ avance.proyeccion|cop }}</div>
+    <div class="cifra-nota"><span class="estado estado-{{ avance.estado }}">{{ avance.estado_texto }}</span></div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Falta para la meta</span>
+    <div class="cifra">{% if avance.meta %}{{ avance.falta|cop }}{% else %}—{% endif %}</div>
+    <div class="cifra-nota">{% if avance.meta and avance.falta and not avance.cerrado %}{{ avance.por_dia|cop }} por día hábil · {{ avance.habiles_restantes }} días restantes{% elif avance.meta and not avance.falta %}Meta alcanzada{% else %}&nbsp;{% endif %}</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Frente al mes anterior</span>
+    <div class="cifra {% if resumen.variacion_previo > 0 %}variacion-favorable{% elif resumen.variacion_previo < 0 %}variacion-desfavorable{% endif %}">{% if resumen.variacion_previo is not None %}{% if resumen.variacion_previo > 0 %}+{% endif %}{{ resumen.variacion_previo|num:1 }} %{% else %}—{% endif %}</div>
+    <div class="cifra-nota">Mismo tramo: {{ resumen.previo|cop }} (al {{ resumen.corte_previo|date:"j \d\e F"|lower }})</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Ventas emitidas</span>
+    <div class="cifra">{{ resumen.n_ventas }}</div>
+    <div class="cifra-nota">Ticket promedio {{ resumen.ticket|cop }}</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Clientes que compraron</span>
+    <div class="cifra">{{ resumen.clientes }}</div>
+    <div class="cifra-nota">{{ resumen.clientes_nuevos }} nuevo{{ resumen.clientes_nuevos|pluralize }} este mes</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Conversión de cotizaciones</span>
+    <div class="cifra">{% if resumen.conversion is not None %}{{ resumen.conversion|num }} %{% else %}—{% endif %}</div>
+    <div class="cifra-nota">{{ resumen.cotizaciones_convertidas }} de {{ resumen.cotizaciones }} cotizaciones del mes</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Cotizaciones abiertas</span>
+    <div class="cifra">{{ total_abiertas|cop }}</div>
+    <div class="cifra-nota">{{ n_abiertas }} sin convertir en venta</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Clientes por recuperar</span>
+    <div class="cifra">{{ por_recuperar }}</div>
+    <div class="cifra-nota">{{ valor_por_recuperar|cop }} en compras históricas</div>
+  </div>
+  <div class="cifra-tarjeta">
+    <span class="cifra-etiqueta">Contactos programados</span>
+    <div class="cifra">{{ pendientes|length }}</div>
+    <div class="cifra-nota">{% if atrasados %}<span class="estado estado-critico">{{ atrasados }} con atraso</span>{% else %}Ninguno atrasado{% endif %}</div>
+  </div>
+</section>
+
+<section class="rejilla rejilla-2 separado">
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Avance de la meta del mes</h2><p>Ventas acumuladas día a día frente a la meta repartida en días hábiles.</p></div></div>
+    {% if avance.meta or avance.ventas %}
+    <div class="grafica"><canvas id="g-avance" role="img" aria-label="Línea de ventas acumuladas del mes frente a la meta acumulada"></canvas></div>
+    <p class="bala-leyenda" style="margin:8px 0 0;"><span class="ley-serie">Ventas acumuladas</span>{% if avance.meta %}<span class="ley-meta-linea">Meta acumulada</span>{% endif %}</p>
+    {% else %}<p class="vacio">Sin ventas ni meta para este mes.</p>{% endif %}
+  </div>
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Ventas frente a la meta por mes</h2><p>Hasta 12 meses. Las barras son las ventas de cada mes; la línea punteada, la meta.</p></div></div>
+    <div class="grafica"><canvas id="g-mensual" role="img" aria-label="Columnas de ventas mensuales con la meta de cada mes"></canvas></div>
+    <p class="bala-leyenda" style="margin:8px 0 0;"><span class="ley-serie">Ventas del mes</span><span class="ley-meta-linea">Meta del mes</span></p>
+  </div>
+</section>
+
+{% if acciones %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Qué hacer ahora</h2><p>Acciones sugeridas a partir de la meta, los clientes y las cotizaciones del mes.</p></div></div>
+  <div class="lista-acciones rejilla rejilla-2">
+    {% for a in acciones %}
+    <div class="accion">
+      <h3>{{ a.titulo }} <span class="estado estado-{{ a.estado }}">{{ a.etiqueta }}</span></h3>
+      <p>{{ a.texto }}</p>
+      {% if a.items_titulo %}<p style="margin-bottom:0;"><strong>{{ a.items_titulo }}</strong></p>{% endif %}
+      {% if a.items %}<ul>{% for it in a.items %}<li>{{ it }}</li>{% endfor %}</ul>{% endif %}
+      <a href="{% url a.enlace %}">Ir a la sección</a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Productos más vendidos</h2><p>Los diez productos con más ventas en el mes; la variación compara con el mismo número de días anteriores.</p></div></div>
+  {% if top %}
+  <div class="rejilla rejilla-2">
+    <div class="grafica grafica-alta"><canvas id="g-top-vendidos" role="img" aria-label="Barras horizontales de ventas por producto"></canvas></div>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Producto</th><th class="num">Unidades</th><th class="num">Part.</th><th class="num">Var.</th><th class="num">Stock</th></tr></thead>
+      <tbody>{% for p in top %}<tr>
+        <td>{{ p.producto }}<span class="subtexto">{{ p.ingreso|cop }} · margen {{ p.margen|pct }}</span></td>
+        <td class="num">{{ p.unidades|num }}</td>
+        <td class="num">{{ p.participacion|pct }}</td>
+        <td class="num {% if p.variacion > 0 %}variacion-favorable{% elif p.variacion < 0 %}variacion-desfavorable{% endif %}">{% if p.variacion is not None %}{% if p.variacion > 0 %}+{% endif %}{{ p.variacion|num }} %{% else %}Nuevo{% endif %}</td>
+        <td class="num"><span class="estado estado-{{ p.estado_stock }}">{{ p.stock|num }}</span></td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  {% else %}<p class="vacio">Sin ventas en el mes.</p>{% endif %}
+</section>
+
+<section class="tarjeta separado" data-pestanas>
+  <div class="tarjeta-titulo"><div><h2>Seguimiento a clientes</h2><p>Clientes que dejaron de comprar, contactos programados y los mejores clientes del mes.</p></div><a href="{% url 'comercial:seguimientos' %}">Ver todo el seguimiento</a></div>
+  <div class="pestanas" role="tablist">
+    <button class="pestana" type="button" role="tab" data-pestana="dejo" aria-selected="true">Dejaron de comprar <span class="conteo">{{ clientes.dejo|length }}</span></button>
+    <button class="pestana" type="button" role="tab" data-pestana="riesgo" aria-selected="false">En riesgo <span class="conteo">{{ clientes.riesgo|length }}</span></button>
+    <button class="pestana" type="button" role="tab" data-pestana="no_volvio" aria-selected="false">No volvieron <span class="conteo">{{ clientes.no_volvio|length }}</span></button>
+    <button class="pestana" type="button" role="tab" data-pestana="programados" aria-selected="false">Contactos programados <span class="conteo">{{ pendientes|length }}</span></button>
+    <button class="pestana" type="button" role="tab" data-pestana="mejores" aria-selected="false">Mejores clientes del mes</button>
+  </div>
+  <div data-panel="dejo">{% include "comercial/_tabla_clientes_inactivos.html" with filas=clientes.dejo %}</div>
+  <div data-panel="riesgo" hidden>{% include "comercial/_tabla_clientes_inactivos.html" with filas=clientes.riesgo %}</div>
+  <div data-panel="no_volvio" hidden>{% include "comercial/_tabla_clientes_inactivos.html" with filas=clientes.no_volvio %}</div>
+  <div data-panel="programados" hidden>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Fecha programada</th><th>Cliente</th><th>Próxima acción</th><th>Última gestión</th><th></th></tr></thead>
+      <tbody>{% for s in pendientes %}<tr>
+        <td>{{ s.proxima_fecha|date:"j M Y" }}<br>{% if s.atraso > 0 %}<span class="estado estado-critico">{{ s.atraso }} día{{ s.atraso|pluralize }} de atraso</span>{% elif s.atraso == 0 %}<span class="estado estado-riesgo">Hoy</span>{% else %}<span class="estado estado-info">En {{ s.faltan }} día{{ s.faltan|pluralize }}</span>{% endif %}</td>
+        <td><a href="{% url 'maestros:cliente' s.cliente.pk %}">{{ s.cliente.nombre }}</a><span class="subtexto">{{ s.cliente.telefono|default:"Sin teléfono" }}</span></td>
+        <td>{{ s.proxima_accion }}</td>
+        <td>{{ s.get_resultado_display }}<span class="subtexto">{{ s.fecha|date:"j M" }} · {{ s.get_canal_display }}</span></td>
+        <td class="num"><a class="btn btn-pequeno" href="{% url 'comercial:seguimiento_nuevo' %}?cliente={{ s.cliente.pk }}&siguiente={{ request.get_full_path|urlencode }}">Registrar gestión</a></td>
+      </tr>{% empty %}<tr><td colspan="5" class="vacio">No hay contactos programados para los próximos 7 días.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+  <div data-panel="mejores" hidden>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Cliente</th><th class="num">Compras del mes</th><th class="num">Total del mes</th></tr></thead>
+      <tbody>{% for c in mejores %}<tr><td><a href="{% url 'maestros:cliente' c.id %}">{{ c.cliente }}</a></td><td class="num">{{ c.compras }}</td><td class="num">{{ c.total|cop }}</td></tr>{% empty %}<tr><td colspan="3" class="vacio">Sin ventas en el mes.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+</section>
+
+<section class="rejilla rejilla-2 separado">
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Ventas por línea de producto</h2><p>Comparadas con el mismo número de días anteriores.</p></div></div>
+    {% if lineas %}
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Línea</th><th class="num">Ventas</th><th class="num">Part.</th><th class="num">Anterior</th><th class="num">Var.</th></tr></thead>
+      <tbody>{% for l in lineas %}<tr><td>{{ l.linea }}</td><td class="num">{{ l.ventas|cop }}</td><td class="num">{{ l.participacion|pct }}</td><td class="num">{{ l.anterior|cop }}</td>
+        <td class="num {% if l.variacion > 0 %}variacion-favorable{% elif l.variacion < 0 %}variacion-desfavorable{% endif %}">{% if l.variacion is not None %}{% if l.variacion > 0 %}+{% endif %}{{ l.variacion|num }} %{% else %}—{% endif %}</td></tr>{% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="vacio">Sin ventas en el mes.</p>{% endif %}
+  </div>
+  <div class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Cotizaciones abiertas</h2><p>Las de mayor valor que aún no se convierten en venta.</p></div><a href="{% url 'comercial:cotizaciones' %}">Ver todas</a></div>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Cotización</th><th>Cliente</th><th class="num">Valor</th><th class="num">Antigüedad</th></tr></thead>
+      <tbody>{% for c in abiertas %}<tr><td><a class="sin-corte" href="{% url 'comercial:cotizacion' c.pk %}">{{ c.codigo }}</a><span class="subtexto">{{ c.get_estado_display }}</span></td><td>{{ c.cliente.nombre }}</td><td class="num">{{ c.total|cop }}</td>
+        <td class="num">{% if c.vencida %}<span class="estado estado-critico">{{ c.dias }} días · vencida</span>{% else %}{{ c.dias }} días{% endif %}</td></tr>{% empty %}<tr><td colspan="4" class="vacio">No hay cotizaciones abiertas.</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </div>
+</section>
+
+{{ serie_diaria|json_script:"datos-avance" }}
+{{ serie_mensual|json_script:"datos-mensual" }}
+{{ top_grafica|json_script:"datos-top-vendidos" }}
+{% endblock %}

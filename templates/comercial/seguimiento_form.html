@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block titulo %}Registrar gestión con cliente{% endblock %}
+{% block contenido %}
+<div class="encabezado">
+  <div><p style="margin:0;"><a href="{% url 'comercial:seguimientos' %}">Seguimiento de clientes</a></p>
+    <h1>Registrar gestión con cliente</h1>
+    <p>Deja constancia de la llamada, visita o mensaje y, si quedó un compromiso, programa el próximo contacto.</p></div>
+</div>
+<form method="post" class="tarjeta formulario" novalidate>
+  {% csrf_token %}
+  <input type="hidden" name="siguiente" value="{{ siguiente }}">
+  {% if form.non_field_errors %}<div class="errores-formulario">{% for e in form.non_field_errors %}<p style="margin:0;">{{ e }}</p>{% endfor %}</div>{% endif %}
+  <div class="campos">
+    {% include "core/_campo.html" with field=form.cliente ancho=True %}
+    {% include "core/_campo.html" with field=form.fecha %}
+    {% include "core/_campo.html" with field=form.canal %}
+    {% include "core/_campo.html" with field=form.resultado ancho=True %}
+    {% include "core/_campo.html" with field=form.nota ancho=True %}
+  </div>
+  <h2 class="separado" style="margin-bottom:10px;">Próximo paso</h2>
+  <div class="campos">
+    {% include "core/_campo.html" with field=form.proxima_fecha %}
+    {% include "core/_campo.html" with field=form.proxima_accion %}
+  </div>
+  <div class="botonera">
+    <button class="btn btn-primario" type="submit">Guardar gestión</button>
+    <a class="btn" href="{% if siguiente %}{{ siguiente }}{% else %}{% url 'comercial:seguimientos' %}{% endif %}">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

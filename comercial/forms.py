@@ -4,11 +4,11 @@ from django.utils import timezone
 
 from maestros.models import Cliente, Producto
 
-from .models import Cotizacion, Pago, Venta
+from .models import Cotizacion, Pago, Seguimiento, Venta
 
 
 class ItemForm(forms.Form):
-    producto = forms.ModelChoiceField(queryset=Producto.objects.none(), label="Producto")
+    producto = forms.ModelChoiceField(queryset=Producto.objects.none(), label="Producto", empty_label="Selecciona el producto")
     cantidad = forms.IntegerField(min_value=1, label="Cantidad")
     precio_unitario = forms.DecimalField(min_value=0, max_digits=14, decimal_places=2, label="Precio unitario")
 
@@ -37,7 +37,7 @@ class _ConClientes(forms.Form):
 
 
 class VentaForm(_ConClientes):
-    cliente = forms.ModelChoiceField(queryset=Cliente.objects.none())
+    cliente = forms.ModelChoiceField(queryset=Cliente.objects.none(), empty_label="Selecciona el cliente")
     fecha = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     forma_pago = forms.ChoiceField(choices=Venta.FORMAS_PAGO, label="Forma de pago")
     medio_pago = forms.ChoiceField(
@@ -53,7 +53,7 @@ class VentaForm(_ConClientes):
 
 
 class CotizacionForm(_ConClientes):
-    cliente = forms.ModelChoiceField(queryset=Cliente.objects.none())
+    cliente = forms.ModelChoiceField(queryset=Cliente.objects.none(), empty_label="Selecciona el cliente")
     fecha = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     vigencia_dias = forms.IntegerField(min_value=1, initial=15, label="Vigencia (días)")
     observaciones = forms.CharField(widget=forms.Textarea(attrs={"rows": 2}), required=False)
@@ -82,3 +82,33 @@ class EstadoCotizacionForm(forms.Form):
         (Cotizacion.ACEPTADA, "Aceptada"),
         (Cotizacion.RECHAZADA, "Rechazada"),
     ])
+
+
+class SeguimientoForm(forms.ModelForm):
+    class Meta:
+        model = Seguimiento
+        fields = ["cliente", "fecha", "canal", "resultado", "nota", "proxima_fecha", "proxima_accion"]
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "proxima_fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "nota": forms.Textarea(attrs={"rows": 3, "placeholder": "Qué se habló, qué necesita el cliente, objeciones…"}),
+            "proxima_accion": forms.TextInput(attrs={"placeholder": "Por ejemplo: enviar cotización de dotación"}),
+        }
+
+    def __init__(self, *args, empresa=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["cliente"].queryset = Cliente.objects.filter(empresa=empresa, activo=True).order_by("nombre")
+        self.fields["cliente"].empty_label = "Selecciona el cliente"
+        self.fields["resultado"].choices = [("", "Selecciona el resultado")] + list(Seguimiento.RESULTADOS)
+        self.fields["proxima_fecha"].help_text = "Si queda un compromiso, la fecha aparecerá en los seguimientos pendientes."
+
+    def clean(self):
+        datos = super().clean()
+        fecha, proxima = datos.get("fecha"), datos.get("proxima_fecha")
+        if fecha and fecha > timezone.localdate():
+            self.add_error("fecha", "La fecha de la gestión no puede ser futura.")
+        if fecha and proxima and proxima < fecha:
+            self.add_error("proxima_fecha", "El próximo contacto debe ser posterior a la gestión.")
+        if proxima and not datos.get("proxima_accion"):
+            self.add_error("proxima_accion", "Indica qué se hará en el próximo contacto.")
+        return datos
