@@ -3,6 +3,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
 from core import views as core
+from core import vinculacion
 
 admin.site.site_header = "PAGE-PYME · Administración"
 admin.site.site_title = "PAGE-PYME"
@@ -17,6 +18,8 @@ urlpatterns = [
     path("configuracion/empresa/", core.empresa_datos, name="empresa"),
     path("configuracion/equipo/", core.equipo, name="equipo"),
     path("configuracion/equipo/<int:pk>/estado/", core.equipo_estado, name="equipo_estado"),
+    path("piloto/empresas/", vinculacion.empresas_piloto, name="empresas_piloto"),
+    path("piloto/empresas/<int:pk>/reiniciar/", vinculacion.empresa_reiniciar, name="empresa_reiniciar"),
     path("evidencia/uso/", core.uso, name="uso"),
     path("evidencia/usabilidad/", core.sus_resultados, name="sus_resultados"),
     path("evidencia/piloto/", core.piloto, name="piloto"),

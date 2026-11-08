@@ -70,6 +70,7 @@
     {% if user.is_staff %}
     <div class="nav-grupo">
       <div class="nav-titulo">Equipo consultor</div>
+      <a class="nav-enlace {% if vista == 'empresas_piloto' or vista == 'empresa_reiniciar' %}activo{% endif %}" href="{% url 'empresas_piloto' %}">Empresas del piloto</a>
       <a class="nav-enlace {% if vista == 'piloto' %}activo{% endif %}" href="{% url 'piloto' %}">Resumen del piloto</a>
       <a class="nav-enlace" href="{% url 'admin:index' %}">Administración</a>
     </div>

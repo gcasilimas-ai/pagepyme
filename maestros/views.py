@@ -9,7 +9,7 @@ from core.permisos import puede, requiere
 from core.utilidades import paginar, parametros_sin_pagina
 
 from .forms import CategoriaForm, ClienteForm, ImportarForm, ProductoForm
-from .importacion import COLUMNAS, ArchivoInvalido, analizar_archivo, aplicar_lote, generar_plantilla
+from .importacion import COLUMNAS, ORDEN_CARGA, ArchivoInvalido, analizar_archivo, aplicar_lote, generar_plantilla
 from .models import Categoria, Cliente, LoteImportacion, Producto
 
 
@@ -158,7 +158,17 @@ def importar(request):
             registrar(request, "importacion", "Archivo analizado", f"{lote.get_tipo_display()}: {lote.archivo_nombre}")
             return redirect("maestros:lote", pk=lote.pk)
     lotes = LoteImportacion.objects.filter(empresa=request.empresa).select_related("usuario")[:10]
-    return render(request, "maestros/importar.html", {"form": form, "lotes": lotes, "columnas": COLUMNAS})
+    aplicados = dict(
+        LoteImportacion.objects.filter(empresa=request.empresa, estado="aplicado")
+        .order_by().values("tipo").annotate(n=Sum("creados")).values_list("tipo", "n")
+    )
+    nombres = dict(LoteImportacion.TIPOS)
+    pasos = [
+        {"tipo": t, "nombre": nombres[t], "requeridas": COLUMNAS[t]["requeridas"],
+         "opcionales": COLUMNAS[t]["opcionales"], "cargados": aplicados.get(t)}
+        for t in ORDEN_CARGA
+    ]
+    return render(request, "maestros/importar.html", {"form": form, "lotes": lotes, "pasos": pasos})
 
 
 @requiere("importar")

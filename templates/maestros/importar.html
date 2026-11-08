@@ -1,37 +1,39 @@
 {% extends "base.html" %}
 {% block titulo %}Importar desde Excel{% endblock %}
 {% block contenido %}
-<div class="encabezado"><div><h1>Importar desde Excel</h1><p>Carga productos, clientes o el inventario inicial desde las hojas de cálculo que ya usa la empresa.</p></div></div>
+<div class="encabezado"><div><h1>Importar desde Excel</h1><p>Carga los maestros, la historia de ventas y compras y el inventario actual desde las hojas de cálculo que ya usa la empresa.</p></div></div>
 <div class="rejilla rejilla-2">
   <section class="tarjeta">
-    <div class="tarjeta-titulo"><h2>1. Sube el archivo</h2></div>
+    <div class="tarjeta-titulo"><h2>Sube el archivo</h2></div>
     <form method="post" enctype="multipart/form-data" novalidate>
       {% csrf_token %}
       <div class="campos">{% for field in form %}{% include "core/_campo.html" with ancho=True %}{% endfor %}</div>
       <div class="botonera"><button class="btn btn-primario" type="submit">Revisar archivo</button></div>
     </form>
     <p class="tenue separado" style="font-size:.86rem;">Nada se guarda en este paso. Primero verás qué filas son válidas, cuáles tienen errores y qué registros se crearían o actualizarían.</p>
-  </section>
-  <section class="tarjeta">
-    <div class="tarjeta-titulo"><h2>Formato esperado</h2></div>
-    <p style="font-size:.9rem;">La primera fila debe tener los nombres de las columnas. Se aceptan variaciones comunes («Código», «Precio», «NIT», «Correo»…). Los números pueden venir como 12.000 o 12000.</p>
-    <table class="tabla">
-      <thead><tr><th>Tipo</th><th>Obligatorias</th><th>Opcionales</th><th></th></tr></thead>
-      <tbody>
-      {% for tipo, c in columnas.items %}
-        <tr><td>{% if tipo == 'inventario' %}Inventario inicial{% else %}{{ tipo|capfirst }}{% endif %}</td><td>{{ c.requeridas|join:", " }}</td><td>{{ c.opcionales|join:", " }}</td><td class="num"><a href="{% url 'maestros:plantilla' tipo %}">Plantilla</a></td></tr>
-      {% endfor %}
-      </tbody>
-    </table>
     <h3 class="separado">Qué valida la plataforma</h3>
     <ul style="font-size:.88rem; padding-left:18px; margin:6px 0 0;">
-      <li>Columnas obligatorias presentes y valores no vacíos.</li>
-      <li>Números válidos y no negativos; cantidades enteras.</li>
-      <li>Códigos o documentos repetidos dentro del mismo archivo.</li>
-      <li>Registros que ya existen (se actualizan en lugar de duplicarse).</li>
-      <li>Clientes con nombre parecido a uno existente (posible duplicado).</li>
-      <li>Precios menores que el costo y productos sin costo.</li>
+      <li>Columnas obligatorias presentes y valores no vacíos; números y fechas válidos.</li>
+      <li>Códigos, documentos o facturas repetidos y registros que ya existen.</li>
+      <li>Ventas con productos o clientes que no están en los maestros.</li>
+      <li>Facturas con filas incoherentes (distinta fecha o cliente) y saldos mayores que el total.</li>
+      <li>Clientes con nombre parecido a uno existente, precios menores que el costo y productos sin costo.</li>
     </ul>
+  </section>
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><div><h2>Orden de carga</h2><p>Sigue este orden la primera vez. Con la historia de ventas los indicadores se calculan desde el primer día.</p></div></div>
+    <div class="tabla-contenedor"><table class="tabla">
+      <thead><tr><th>Paso</th><th>Columnas obligatorias</th><th class="num">Cargados</th><th></th></tr></thead>
+      <tbody>
+      {% for p in pasos %}
+        <tr><td><strong>{{ forloop.counter }}. {{ p.nombre }}</strong>{% if p.opcionales %}<span class="subtexto">Opcionales: {{ p.opcionales|join:", " }}</span>{% endif %}</td>
+          <td style="font-size:.85rem;">{{ p.requeridas|join:", " }}</td>
+          <td class="num">{% if p.cargados %}<span class="estado estado-cumple">{{ p.cargados }}</span>{% else %}<span class="tenue">—</span>{% endif %}</td>
+          <td class="num"><a href="{% url 'maestros:plantilla' p.tipo %}">Plantilla</a></td></tr>
+      {% endfor %}
+      </tbody>
+    </table></div>
+    <p class="tenue" style="font-size:.84rem; margin:10px 0 0;">El inventario actual se usa para reconstruir el inventario de las fechas pasadas: saldo inicial = existencias actuales − compras + ventas del histórico. Cada plantilla trae una hoja de instrucciones.</p>
   </section>
 </div>
 <section class="tarjeta separado">

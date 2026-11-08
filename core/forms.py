@@ -83,3 +83,35 @@ class MetasComercialesForm(forms.Form):
 
     def valores(self):
         return {i: self.cleaned_data.get(f"mes_{i}") for i in range(1, 13)}
+
+
+class EmpresaPilotoForm(forms.ModelForm):
+    """Caracterización de una empresa que se vincula al piloto."""
+
+    class Meta:
+        model = Empresa
+        fields = ["nombre", "nit", "ciudad", "departamento", "sector", "numero_empleados", "anios_operacion",
+                  "herramienta_previa", "fecha_vinculacion"]
+        widgets = {"fecha_vinculacion": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in ("numero_empleados", "anios_operacion", "herramienta_previa", "fecha_vinculacion"):
+            self.fields[campo].required = True
+        self.fields["nombre"].help_text = "Nombre comercial. En la tesis se identificará con un seudónimo (Empresa A, B…)."
+
+
+class GerentePilotoForm(NuevoUsuarioForm):
+    """Usuario gerente de la empresa nueva (el rol se asigna automáticamente)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        del self.fields["rol"]
+
+
+class ReiniciarEmpresaForm(forms.Form):
+    confirmacion = forms.CharField(label="Escribe el nombre exacto de la empresa para confirmar")
+    incluir_maestros = forms.BooleanField(
+        label="Borrar también productos, categorías y clientes", required=False,
+        help_text="Si no se marca, se conservan los maestros y se dejan las existencias en cero.",
+    )

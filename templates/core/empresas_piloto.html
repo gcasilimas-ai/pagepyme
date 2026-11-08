@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block titulo %}Empresas del piloto{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><h1>Empresas del piloto</h1><p>Vincula cada pyme participante con su caracterización y su usuario gerente. Solo lo ve el equipo consultor.</p></div></div>
+
+<section class="tarjeta">
+  <div class="tarjeta-titulo"><div><h2>Empresas vinculadas</h2><p>Las empresas de demostración no aparecen aquí ni cuentan en el resumen del piloto.</p></div><a class="btn btn-pequeno" href="{% url 'piloto' %}">Resumen del piloto</a></div>
+  <div class="tabla-contenedor"><table class="tabla">
+    <thead><tr><th>Empresa</th><th>Caracterización</th><th>Vinculada</th><th class="num">Usuarios</th><th class="num">Productos</th><th class="num">Clientes</th><th class="num">Ventas</th><th class="num">Cargas</th><th></th></tr></thead>
+    <tbody>
+    {% for e in empresas %}
+      <tr>
+        <td><strong>{{ e.nombre }}</strong><span class="subtexto">{{ e.nit|default:"Sin NIT" }} · {{ e.ciudad }}</span></td>
+        <td style="font-size:.85rem;">{{ e.numero_empleados|default:"—" }} empleados · {{ e.anios_operacion|default:"—" }} años · {{ e.herramienta_previa|default:"—" }}</td>
+        <td>{{ e.fecha_vinculacion|date:"j M Y"|default:"—" }}</td>
+        <td class="num">{{ e.n_usuarios }}</td><td class="num">{{ e.n_productos }}</td><td class="num">{{ e.n_clientes }}</td><td class="num">{{ e.n_ventas }}</td><td class="num">{{ e.n_lotes }}</td>
+        <td class="num" style="white-space:nowrap;">
+          <form method="post" action="{% url 'cambiar_empresa' %}" style="display:inline;">{% csrf_token %}<input type="hidden" name="empresa" value="{{ e.pk }}"><input type="hidden" name="siguiente" value="{% url 'maestros:importar' %}"><button class="btn btn-pequeno" type="submit">Trabajar sobre ella</button></form>
+          <a class="btn btn-pequeno" href="{% url 'empresa_reiniciar' e.pk %}">Reiniciar datos</a>
+        </td>
+      </tr>
+    {% empty %}<tr><td colspan="9" class="vacio">Aún no hay empresas vinculadas al piloto.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+<form method="post" novalidate class="separado">
+  {% csrf_token %}
+  <div class="rejilla rejilla-2">
+    <section class="tarjeta">
+      <div class="tarjeta-titulo"><div><h2>1. Datos de la empresa</h2><p>Esta caracterización se usa en el capítulo de resultados (con seudónimo).</p></div></div>
+      <div class="campos">{% for field in form_empresa %}{% include "core/_campo.html" %}{% endfor %}</div>
+    </section>
+    <section class="tarjeta">
+      <div class="tarjeta-titulo"><div><h2>2. Usuario gerente</h2><p>Con este usuario el gerente ingresa y crea a su equipo desde «Equipo».</p></div></div>
+      <div class="campos">{% for field in form_gerente %}{% include "core/_campo.html" %}{% endfor %}</div>
+      <div class="botonera"><button class="btn btn-primario" type="submit">Vincular empresa</button></div>
+      <p class="tenue" style="font-size:.84rem; margin:10px 0 0;">Después de vincularla quedarás trabajando sobre esa empresa, en la página de importación, para cargar sus datos.</p>
+    </section>
+  </div>
+</form>
+{% endblock %}

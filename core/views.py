@@ -12,6 +12,7 @@ from django.db.models import Count, Max, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from analitica import indicadores as ind
@@ -56,7 +57,10 @@ def cambiar_empresa(request):
     empresa = get_object_or_404(Empresa, pk=request.POST.get("empresa"))
     request.session["empresa_id"] = empresa.pk
     messages.info(request, f"Ahora trabajas sobre «{empresa.nombre}».")
-    return redirect(request.POST.get("siguiente") or "inicio")
+    siguiente = request.POST.get("siguiente")
+    if siguiente and url_has_allowed_host_and_scheme(siguiente, {request.get_host()}, request.is_secure()):
+        return redirect(siguiente)
+    return redirect("inicio")
 
 
 @requiere("configuracion")
@@ -168,7 +172,8 @@ def _semanas(n, hasta=None):
 
 def resumen_uso(empresa, semanas=8):
     inicios = _semanas(semanas)
-    registros = RegistroActividad.objects.filter(empresa=empresa, fecha__date__gte=inicios[0])
+    # Las acciones del equipo consultor (cargas hechas en nombre de la empresa) no cuentan como uso de la empresa.
+    registros = RegistroActividad.objects.filter(empresa=empresa, fecha__date__gte=inicios[0], usuario__is_staff=False)
     por_semana = OrderedDict((s, {"acciones": 0, "usuarios": set(), "dias": set()}) for s in inicios)
     modulos = Counter()
     for r in registros.only("fecha", "usuario_id", "modulo"):
@@ -192,13 +197,13 @@ def uso(request):
     usuarios = Perfil.objects.filter(empresa=request.empresa).select_related("usuario")
     ultimas = {
         r["usuario_id"]: r["ultima"]
-        for r in RegistroActividad.objects.filter(empresa=request.empresa).values("usuario_id").annotate(
+        for r in RegistroActividad.objects.filter(empresa=request.empresa, usuario__is_staff=False).values("usuario_id").annotate(
             ultima=Max("fecha"), n=Count("id"))
     }
     return render(request, "core/uso.html", {
         "filas": filas, "modulos": modulos,
         "usuarios": [(p, ultimas.get(p.usuario_id)) for p in usuarios],
-        "recientes": RegistroActividad.objects.filter(empresa=request.empresa).select_related("usuario")[:25],
+        "recientes": RegistroActividad.objects.filter(empresa=request.empresa, usuario__is_staff=False).select_related("usuario")[:25],
         "max_acciones": max([f["acciones"] for f in filas] + [1]),
     })
 
@@ -268,7 +273,7 @@ def piloto(request):
             "productos": Producto.objects.filter(empresa=e).count(),
             "clientes": Cliente.objects.filter(empresa=e).count(),
             "ventas": Venta.objects.filter(empresa=e, estado=Venta.EMITIDA).count(),
-            "acciones": RegistroActividad.objects.filter(empresa=e).count(),
+            "acciones": RegistroActividad.objects.filter(empresa=e, usuario__is_staff=False).count(),
             "semanas_activas": sum(1 for s in uso_semanal if s["acciones"] > 0),
             "uso_semanal": uso_semanal,
             "sus": mean(r.puntaje for r in respuestas) if respuestas else None,

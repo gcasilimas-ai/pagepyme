@@ -65,7 +65,10 @@ class ClienteForm(FormularioEmpresa):
 class ImportarForm(forms.Form):
     tipo = forms.ChoiceField(
         label="¿Qué vas a cargar?",
-        choices=[("productos", "Productos"), ("clientes", "Clientes"), ("inventario", "Inventario inicial")],
+        choices=[
+            ("productos", "1. Productos"), ("clientes", "2. Clientes"), ("ventas", "3. Ventas históricas"),
+            ("compras", "4. Compras históricas (opcional)"), ("inventario", "5. Inventario actual"),
+        ],
     )
     archivo = forms.FileField(label="Archivo (.xlsx o .csv)")
 

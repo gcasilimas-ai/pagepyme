@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block titulo %}Reiniciar datos · {{ empresa.nombre }}{% endblock %}
+{% block contenido %}
+<div class="encabezado"><div><p style="margin:0;"><a href="{% url 'empresas_piloto' %}">Empresas del piloto</a></p><h1>Reiniciar datos de {{ empresa.nombre }}</h1><p>Úsalo solo si una carga quedó mal y es necesario repetirla desde cero.</p></div></div>
+<div class="rejilla rejilla-2">
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Qué se borra</h2></div>
+    <ul style="margin:0; padding-left:18px;">
+      <li>{{ resumen.ventas }} ventas con sus líneas y abonos, y {{ resumen.cotizaciones }} cotizaciones.</li>
+      <li>{{ resumen.movimientos }} movimientos de inventario.</li>
+      <li>{{ resumen.lotes }} cargas desde Excel, las gestiones con clientes y las metas de ventas.</li>
+      <li>Opcionalmente, {{ resumen.productos }} productos y {{ resumen.clientes }} clientes.</li>
+    </ul>
+    <p class="tenue" style="font-size:.86rem;">Se conservan la empresa, sus usuarios, la bitácora de uso y las respuestas de la encuesta SUS.</p>
+  </section>
+  <section class="tarjeta">
+    <div class="tarjeta-titulo"><h2>Confirmar</h2></div>
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="campos">{% for field in form %}{% include "core/_campo.html" with ancho=True %}{% endfor %}</div>
+      <div class="botonera"><a class="btn" href="{% url 'empresas_piloto' %}">Cancelar</a><button class="btn btn-peligro" type="submit">Borrar los datos</button></div>
+    </form>
+  </section>
+</div>
+{% endblock %}

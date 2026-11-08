@@ -30,7 +30,7 @@ def _redondear(valor):
 
 @transaction.atomic
 def registrar_movimiento(empresa, producto, tipo, cantidad, costo_unitario=None, fecha=None,
-                         venta=None, usuario=None, observacion=""):
+                         venta=None, usuario=None, observacion="", origen=MovimientoInventario.OPERACION):
     if cantidad is None or int(cantidad) <= 0:
         raise ValueError("La cantidad debe ser mayor que cero.")
     cantidad = int(cantidad)
@@ -64,4 +64,5 @@ def registrar_movimiento(empresa, producto, tipo, cantidad, costo_unitario=None,
         venta=venta,
         usuario=usuario,
         observacion=observacion,
+        origen=origen,
     )

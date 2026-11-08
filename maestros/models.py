@@ -106,7 +106,10 @@ class Cliente(models.Model):
 class LoteImportacion(models.Model):
     """Registro de cada carga de datos desde Excel/CSV (trazabilidad del proceso ETL)."""
 
-    TIPOS = [("productos", "Productos"), ("clientes", "Clientes"), ("inventario", "Inventario inicial")]
+    TIPOS = [
+        ("productos", "Productos"), ("clientes", "Clientes"), ("ventas", "Ventas históricas"),
+        ("compras", "Compras históricas"), ("inventario", "Inventario actual"),
+    ]
     ESTADOS = [("pendiente", "Pendiente de confirmar"), ("aplicado", "Aplicado"), ("descartado", "Descartado")]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="lotes_importacion")
@@ -122,6 +125,7 @@ class LoteImportacion(models.Model):
     actualizados = models.PositiveIntegerField(default=0)
     errores = models.JSONField(default=list, blank=True)
     datos = models.JSONField(default=list, blank=True)
+    notas = models.JSONField(default=list, blank=True, help_text="Supuestos y hallazgos registrados al aplicar la carga.")
 
     class Meta:
         ordering = ["-fecha"]

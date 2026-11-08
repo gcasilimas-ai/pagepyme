@@ -24,6 +24,17 @@ class MovimientoInventario(models.Model):
     ]
     TIPOS_SUMAN = {ENTRADA, AJUSTE_POSITIVO, DEVOLUCION}
 
+    OPERACION = "operacion"
+    CONTEO = "conteo"
+    HISTORICO = "historico"
+    SALDO_INICIAL = "saldo_inicial"
+    ORIGENES = [
+        (OPERACION, "Operación registrada en la plataforma"),
+        (CONTEO, "Inventario actual cargado desde archivo"),
+        (HISTORICO, "Carga histórica de ventas o compras"),
+        (SALDO_INICIAL, "Saldo inicial reconstruido"),
+    ]
+
     empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="movimientos")
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name="movimientos")
     fecha = models.DateField(default=timezone.localdate, db_index=True)
@@ -35,6 +46,7 @@ class MovimientoInventario(models.Model):
     )
     venta = models.ForeignKey("comercial.Venta", on_delete=models.CASCADE, null=True, blank=True, related_name="movimientos")
     observacion = models.CharField("Observación", max_length=200, blank=True)
+    origen = models.CharField(max_length=20, choices=ORIGENES, default=OPERACION, db_index=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     creado = models.DateTimeField(auto_now_add=True)
 

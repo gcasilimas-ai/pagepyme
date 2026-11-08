@@ -284,8 +284,8 @@ def exportar_archivo(request, conjunto):
         qs = RegistroActividad.objects.filter(empresa=empresa, fecha__date__gte=inicio, fecha__date__lte=fin) \
             .select_related("usuario").order_by("fecha")
         filas = [(timezone.localtime(r.fecha).replace(tzinfo=None), r.usuario.get_username() if r.usuario else "",
-                  r.modulo, r.accion, r.detalle) for r in qs]
-        contenido = _libro("Actividad", ["Fecha y hora", "Usuario", "Módulo", "Acción", "Detalle"], filas)
+                  "Sí" if r.usuario and r.usuario.is_staff else "No", r.modulo, r.accion, r.detalle) for r in qs]
+        contenido = _libro("Actividad", ["Fecha y hora", "Usuario", "Equipo consultor", "Módulo", "Acción", "Detalle"], filas)
     elif conjunto == "seguimientos":
         qs = Seguimiento.objects.filter(empresa=empresa, fecha__gte=inicio, fecha__lte=fin) \
             .select_related("cliente", "usuario").order_by("fecha")

@@ -130,6 +130,10 @@ def convertir_cotizacion(cotizacion, forma_pago, usuario=None, fecha=None):
 def anular_venta(venta, usuario=None, motivo=""):
     if venta.estado == Venta.ANULADA:
         raise ValidationError("La venta ya está anulada.")
+    if venta.documento_externo:
+        raise ValidationError(
+            "Las ventas de la carga histórica no se anulan desde aquí: corrige el archivo de origen y vuelve a cargarlo."
+        )
     abonos = venta.pagos.exclude(referencia="Pago de contado")
     if venta.forma_pago == Venta.CREDITO and abonos.exists():
         raise ValidationError("La venta tiene abonos registrados; elimínalos antes de anularla.")

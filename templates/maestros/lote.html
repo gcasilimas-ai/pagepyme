@@ -19,6 +19,12 @@
 </form>
 {% elif lote.estado == 'aplicado' %}
 <div class="aviso-neutro separado">Carga aplicada: {{ lote.creados }} registro{{ lote.creados|pluralize }} creado{{ lote.creados|pluralize }} y {{ lote.actualizados }} actualizado{{ lote.actualizados|pluralize }}.</div>
+{% if lote.notas %}
+<section class="tarjeta separado">
+  <div class="tarjeta-titulo"><div><h2>Supuestos y hallazgos de la carga</h2><p>Quedan registrados para la trazabilidad de los indicadores.</p></div></div>
+  <ul style="margin:0; padding-left:18px;">{% for n in lote.notas %}<li style="margin-bottom:4px;">{{ n }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
 {% endif %}
 {% if lote.errores %}
 <section class="tarjeta separado">
@@ -33,7 +39,8 @@
   <div class="tarjeta-titulo"><div><h2>Filas válidas</h2><p>Así quedarían los datos después de limpiarlos (mayúsculas, espacios y formatos numéricos).</p></div></div>
   <div class="tabla-contenedor"><table class="tabla">
     <thead><tr><th class="num">Fila</th><th>Acción</th><th>Datos</th><th>Advertencias</th></tr></thead>
-    <tbody>{% for f in lote.datos %}<tr><td class="num">{{ f.fila }}</td><td>{{ f.datos.accion|capfirst }}</td><td style="font-size:.84rem;">{% for k, v in f.datos.items %}{% if k != 'accion' %}{{ k }}: <strong>{{ v|default:"—" }}</strong>{% if not forloop.last %} · {% endif %}{% endif %}{% endfor %}</td><td style="font-size:.84rem; color:var(--warn);">{{ f.advertencias|join:"; " }}</td></tr>{% empty %}<tr><td colspan="4" class="vacio">No hay filas válidas.</td></tr>{% endfor %}</tbody>
+    <tbody>{% for f in lote.datos|slice:":300" %}<tr><td class="num">{{ f.fila }}</td><td>{{ f.datos.accion|capfirst }}</td><td style="font-size:.84rem;">{% for k, v in f.datos.items %}{% if k != 'accion' %}{{ k }}: <strong>{{ v|default:"—" }}</strong>{% if not forloop.last %} · {% endif %}{% endif %}{% endfor %}</td><td style="font-size:.84rem; color:var(--warn);">{{ f.advertencias|join:"; " }}</td></tr>{% empty %}<tr><td colspan="4" class="vacio">No hay filas válidas.</td></tr>{% endfor %}</tbody>
   </table></div>
+  {% if lote.datos|length > 300 %}<p class="tenue" style="font-size:.84rem; margin:8px 0 0;">Se muestran las primeras 300 de {{ lote.datos|length }} filas válidas.</p>{% endif %}
 </section>
 {% endblock %}

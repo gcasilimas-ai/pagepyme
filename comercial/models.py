@@ -82,6 +82,10 @@ class Venta(models.Model):
     estado = models.CharField(max_length=10, choices=ESTADOS, default=EMITIDA)
     cotizacion = models.OneToOneField(Cotizacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="venta")
     observaciones = models.TextField(blank=True)
+    documento_externo = models.CharField(
+        "Factura original", max_length=40, blank=True, db_index=True,
+        help_text="Número de la factura en el sistema anterior (solo ventas de la carga histórica).",
+    )
     total = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal("0"))
     creado_por = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     creado = models.DateTimeField(auto_now_add=True)
