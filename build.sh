@@ -16,5 +16,9 @@ fi
 
 # Usuario del equipo consultor (administración y resumen del piloto)
 if [ -n "${DJANGO_SUPERUSER_USERNAME:-}" ] && [ -n "${DJANGO_SUPERUSER_PASSWORD:-}" ]; then
-  python manage.py createsuperuser --no-input || echo "El usuario administrador ya existe."
+  if python manage.py shell -c "import os, sys; from django.contrib.auth import get_user_model; sys.exit(0 if get_user_model().objects.filter(username=os.environ['DJANGO_SUPERUSER_USERNAME']).exists() else 1)"; then
+    echo "El usuario administrador ya existe; no se modifica."
+  else
+    python manage.py createsuperuser --no-input
+  fi
 fi
