@@ -49,7 +49,7 @@ def ventas(request):
     desde, hasta = _fecha(request.GET.get("desde")), _fecha(request.GET.get("hasta"))
     if q:
         numero = q.upper().replace("VTA-", "").strip()
-        filtro = Q(cliente__nombre__icontains=q)
+        filtro = Q(cliente__nombre__icontains=q) | Q(documento_externo__iexact=q)
         if numero.isdigit():
             filtro |= Q(numero=int(numero))
         qs = qs.filter(filtro)

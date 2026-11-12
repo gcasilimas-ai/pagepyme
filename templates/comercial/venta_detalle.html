@@ -5,6 +5,7 @@
 <div class="encabezado">
   <div><p style="margin:0;"><a href="{% url 'comercial:ventas' %}">Ventas</a></p>
     <h1>{{ venta.codigo }} · <a href="{% url 'maestros:cliente' venta.cliente.pk %}">{{ venta.cliente.nombre }}</a></h1>
+    {% if venta.documento_externo %}<p style="margin:0;">Factura original {{ venta.documento_externo }} · cargada desde el histórico</p>{% endif %}
     <p>{{ venta.fecha|date:"j \d\e F \d\e Y"|lower }} · {{ venta.get_forma_pago_display }}{% if venta.fecha_vencimiento %} · vence el {{ venta.fecha_vencimiento|date:"j M Y" }}{% endif %} · registrada por {{ venta.creado_por.username|default:"—" }}{% if venta.cotizacion %} · desde <a href="{% url 'comercial:cotizacion' venta.cotizacion.pk %}">{{ venta.cotizacion.codigo }}</a>{% endif %}</p></div>
   {% if venta.estado == 'anulada' %}<span class="estado estado-neutro">Anulada</span>{% endif %}
 </div>
