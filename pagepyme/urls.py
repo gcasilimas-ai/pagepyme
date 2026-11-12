@@ -20,6 +20,7 @@ urlpatterns = [
     path("configuracion/equipo/<int:pk>/estado/", core.equipo_estado, name="equipo_estado"),
     path("piloto/empresas/", vinculacion.empresas_piloto, name="empresas_piloto"),
     path("piloto/empresas/<int:pk>/reiniciar/", vinculacion.empresa_reiniciar, name="empresa_reiniciar"),
+    path("piloto/evidencia.xlsx", vinculacion.evidencia_piloto, name="evidencia_piloto"),
     path("evidencia/uso/", core.uso, name="uso"),
     path("evidencia/usabilidad/", core.sus_resultados, name="sus_resultados"),
     path("evidencia/piloto/", core.piloto, name="piloto"),

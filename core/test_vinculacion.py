@@ -68,3 +68,29 @@ class VinculacionTest(TestCase):
         self.client.post(f"/piloto/empresas/{e.pk}/reiniciar/", {"confirmacion": "Piloto Uno", "incluir_maestros": "on"})
         self.assertEqual((e.productos.count(), e.clientes.count()), (0, 0))
         self.assertEqual(self.client.get(f"/piloto/empresas/{self.demo.pk}/reiniciar/").status_code, 404)
+
+
+@override_settings(ALLOWED_HOSTS=["testserver"])
+class EvidenciaPilotoTest(TestCase):
+    def test_descarga_solo_consultor(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        User = get_user_model()
+        User.objects.create_user("consultor", password="clave-larga-123", is_staff=True)
+        e = Empresa.objects.create(nombre="Piloto Uno")
+        p = Producto.objects.create(empresa=e, codigo="A", nombre="A", costo_unitario=10, precio_venta=20)
+        c = Cliente.objects.create(empresa=e, documento="1", nombre="Cliente Secreto")
+        registrar_movimiento(e, p, MovimientoInventario.ENTRADA, 5, costo_unitario=10)
+        com.crear_venta(e, c, [(p, 2, 20)])
+        g = User.objects.create_user("gerente", password="clave-larga-123")
+        Perfil.objects.create(usuario=g, empresa=e, rol="gerente")
+        self.client.login(username="gerente", password="clave-larga-123")
+        self.assertEqual(self.client.get("/piloto/evidencia.xlsx").status_code, 403)
+        self.client.login(username="consultor", password="clave-larga-123")
+        r = self.client.get("/piloto/evidencia.xlsx")
+        self.assertEqual(r.status_code, 200)
+        libro = load_workbook(BytesIO(r.content))
+        self.assertIn("Indicadores", libro.sheetnames)
+        self.assertEqual(libro["Empresas"]["A2"].value, "Piloto Uno")
+        textos = " ".join(str(c.value) for h in libro.worksheets for fila in h.iter_rows() for c in fila if c.value)
+        self.assertNotIn("Cliente Secreto", textos)

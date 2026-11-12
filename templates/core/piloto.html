@@ -4,6 +4,7 @@
 {% block contenido %}
 <div class="encabezado">
   <div><h1>Resumen del piloto</h1><p>Empresas reales vinculadas (se excluyen las de demostración). Indicadores de los últimos 30 días, del {{ inicio|date:"j M" }} al {{ fin|date:"j M Y" }}.</p></div>
+  <div class="acciones"><a class="btn btn-primario" href="{% url 'evidencia_piloto' %}">Descargar evidencia del piloto (Excel)</a></div>
 </div>
 <div class="rejilla rejilla-4">
   <section class="tarjeta"><div class="cifra-etiqueta">Empresas en el piloto</div><div class="indice">{{ filas|length }}</div></section>

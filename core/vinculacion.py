@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.db.models import Count, Q
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -105,3 +106,17 @@ def borrar_datos(empresa, incluir_maestros=False):
         Cliente.objects.filter(empresa=empresa).delete()
     else:
         Producto.objects.filter(empresa=empresa).update(stock_actual=0)
+
+
+@login_required
+def evidencia_piloto(request):
+    """Descarga en Excel la evidencia del piloto de todas las empresas vinculadas."""
+    _solo_consultor(request)
+    from .evidencia_piloto import generar
+    empresas = Empresa.objects.filter(es_demo=False).order_by("nombre")
+    respuesta = HttpResponse(
+        generar(empresas), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    respuesta["Content-Disposition"] = f'attachment; filename="evidencia_piloto_{timezone.localdate():%Y%m%d}.xlsx"'
+    registrar(request, "evidencia", "Evidencia del piloto descargada", f"{empresas.count()} empresas")
+    return respuesta
